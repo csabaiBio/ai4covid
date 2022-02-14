@@ -1,5 +1,6 @@
 weights-*.zip
 */src/BSNet/weights/*
+outputs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -23,8 +23,7 @@ def run(config):
         predictions = nets["alignment_model"].predict(
             np.expand_dims(image, [0, -1]))
         cv2.imwrite(os.path.join(config.output_base_path, 'aligned_img.png'), predictions[0] * 255.)
-        predictions = nets["segmentation_model"].predict(
-            np.expand_dims(image, [0, -1]))
+        predictions = nets["segmentation_model"].predict(predictions)
         cv2.imwrite(os.path.join(config.output_base_path, 'segm_img.png'), predictions[0] * 255.)
         break
 

@@ -7,3 +7,5 @@ output_base_path: /mnt/ncshare/ai4covid_hackathon/outputs
 corner_ratio: 0.2
 center_ratio: 0.1
 use_bottom: True
+
+save_images: True

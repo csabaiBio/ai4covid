@@ -95,7 +95,7 @@ class ImageProcessor:
         inverted = False
         if self.is_inverted(image):
             inverted = True
-            image = 2**16 - image
+            image = np.max(image) - image
         image = self.normalize_image(image)
         with tf.device('/cpu:0'):
             aligned_image = self.nets["alignment_model"].predict(

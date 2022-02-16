@@ -11,9 +11,6 @@ class TableProcessor:
         self.train_data.drop(["Row_number", "ImageFile"], axis=1, inplace=True)
         self.train_data = self.train_data.astype(float)
 
-        self.train_std = self.train_data.std()
-        self.train_mean = self.train_data.mean()
-
     def line_impute_population_average(self, test_data_row):
         """Impute missing values in a row of test data based on average
         value of the 10 closes patient in age.
@@ -34,10 +31,17 @@ class TableProcessor:
 
         test_data_row = test_data_row.astype(float)
 
+        continuous_features = ["Age","Temp_C","DaysFever","WBC","RBC","CRP","Fibrinogen","Glucose","PCT","LDH","INR","D_dimer","Ox_percentage","PaO2","SaO2","PaCO2","pH"]
+        discrete_features = ["Sex","PositivityAtAdmission","Cough","DifficultyInBreathing","CardiovascularDisease","IschemicHeartDisease","AtrialFibrillation","HeartFailure",
+                            "Ictus","HighBloodPressure","Diabetes","Dementia","BPCO","Cancer","ChronicKidneyDisease","RespiratoryFailure","Obesity","Position"]
+
         for _, col_name in enumerate(test_data_row.columns.values):
             if test_data_row[col_name].isnull().values.any():
-                test_data_row[col_name] = self.train_data[col_name].mean()
-                
-        test_data_row = (test_data_row - self.train_mean)/self.train_std
+                if col_name in continuous_features:
+                    test_data_row[col_name] = self.train_data[col_name].dropna().mean()
+                elif col_name in discrete_features:
+                    test_data_row[col_name] = self.train_data[col_name].dropna().median()
+
+        test_data_row[continuous_features] = (test_data_row[continuous_features] - self.train_data[continuous_features].mean())/self.train_data[continuous_features].std()
         
         return image_file, test_data_row.to_numpy().flatten()

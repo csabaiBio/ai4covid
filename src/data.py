@@ -4,7 +4,6 @@ from albumentations import Compose, GaussianBlur, RandomCrop, Resize, Rotate
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from pathlib import Path
 from functools import partial
 
 def aug_fn(image, augment, width, height):
@@ -206,7 +205,7 @@ def generate_data(config):
                 ax[1, i].set_title('Prognosis: %d' % progs.numpy()[i])
                 ax[0, i].axis("off")
                 ax[1, i].axis("off")
-                
+
         plt.savefig( f"{config.raw_output_base}/batch_sample.png", dpi=75)
         plt.close()
 

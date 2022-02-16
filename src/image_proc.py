@@ -79,22 +79,20 @@ class ImageProcessor:
         img = np.array(img) / 255.
         return img
 
-    def save_images(self, images, name, is_inverted):
+    def save_images(self, images, name):
         Path(os.path.join(self.config.output_base_path, 'aligned')).mkdir(parents=True, exist_ok=True)
         Path(os.path.join(self.config.output_base_path, 'segmented')).mkdir(parents=True, exist_ok=True)
 
         segmented_image = images["segmented_image"]
-        cv2.imwrite(os.path.join(self.config.output_base_path, 'segmented', f'{name}_segm_img.png' if not is_inverted else f'inverted_{name}_segm_img.png'), (segmented_image * 255.).astype('uint8'))
+        cv2.imwrite(os.path.join(self.config.output_base_path, 'segmented', f"{name}.png"), (segmented_image * 255.).astype('uint8'))
 
         aligned_image = images["aligned_image"]
-        cv2.imwrite(os.path.join(self.config.output_base_path, 'aligned', f'{name}_aligned_img.png' if not is_inverted else f'inverted_{name}_aligned_img.png'), (aligned_image * 255.).astype('uint8'))
+        cv2.imwrite(os.path.join(self.config.output_base_path, 'aligned', f'{name}.png'), (aligned_image * 255.).astype('uint8'))
 
     def process_image(self, path):
         name = Path(path).stem
         image = self.load_image(path)
-        inverted = False
         if self.is_inverted(image):
-            inverted = True
             image = np.max(image) - image
         image = self.normalize_image(image)
         with tf.device('/cpu:0'):
@@ -102,13 +100,14 @@ class ImageProcessor:
                 np.expand_dims(image, [0, -1]))
         with tf.device('/cpu:0'):
             segmented_image = self.nets["segmentation_model"].predict(aligned_image)
+            segmented_image_flipped = self.nets["segmentation_model"].predict(np.expand_dims(np.fliplr(aligned_image[0, :, :, 0]), [0, -1]))
         
         output = {
             "aligned_image" : aligned_image[0],
-            "segmented_image": segmented_image[0]
+            "segmented_image": .5 * np.expand_dims(segmented_image[0, :, :, 0] + np.fliplr(segmented_image_flipped[0, :, :, 0]), -1)
         }
 
         if self.config.save_images:
-            self.save_images(output, name, inverted)
+            self.save_images(output, name)
 
         return output

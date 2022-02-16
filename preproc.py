@@ -7,7 +7,7 @@ import os
 from tqdm import tqdm
 
 
-@hydra.main(config_path='src/conf', config_name='base')
+@hydra.main(config_path='src/conf', config_name='preproc')
 def run(config):
     #wandb.init(project=config.project, entity='elte-ai4covid')
 
@@ -20,7 +20,7 @@ def run(config):
 
     for idx in tqdm(range(len(df))):
         row=df.iloc[[idx]]
-        image_file, processed_row = table_prcessor.line_impute_population_average(row)
+        image_file, _ = table_prcessor.line_impute_population_average(row)
         img_path = os.path.join(config.image_base_path, image_file)
         _ = img_processor.process_image(img_path)
 

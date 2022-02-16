@@ -1,3 +1,9 @@
+weights-*.zip
+*/src/BSNet/weights/*
+outputs/
+.vscode/
+**/*/__pycache__
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

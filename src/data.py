@@ -1,22 +1,31 @@
-import pandas as pd
-import tensorflow as tf
-from albumentations import Compose, GaussianBlur, RandomCrop, Resize, Rotate
 import os
-import numpy as np
-import matplotlib.pyplot as plt
-from pathlib import Path
 from functools import partial
 
-def aug_fn(image, augment, width, height):
-    data = {"image": image}
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from albumentations import (
+    Compose,
+    GaussianBlur,
+    RandomBrightnessContrast,
+    RandomCrop,
+    Resize,
+    Rotate,
+)
+
+
+def aug_fn(image, mask, augment, width, height):
+    data = {"image": image, "mask": mask}
     if augment:
         transforms = Compose(
             [
                 RandomCrop(
-                    int(width - 0.05 * width), int(height - 0.05 * height), p=0.5
+                    int(width - 0.15 * width), int(height - 0.15 * height), p=0.5
                 ),
+                RandomBrightnessContrast(p=0.2),
                 Rotate(limit=10),
-                GaussianBlur(sigma_limit=1.2),
+                GaussianBlur(blur_limit=1.2),
                 Resize(
                     width,
                     height,
@@ -36,17 +45,19 @@ def aug_fn(image, augment, width, height):
         )
 
     aug_data = transforms(**data)
-    aug_img = aug_data["image"]
-    return aug_img
+    return aug_data["image"], aug_data["mask"]
 
-def process_data(sample, augment, img_width, img_height):
+
+def augment_data(sample, augment, img_width, img_height):
     image = sample["image"]
-    aug_img = tf.numpy_function(
+    mask = sample["mask"]
+    aug_data = tf.numpy_function(
         func=aug_fn,
-        inp=[image, augment, img_width, img_height],
-        Tout=tf.float32,
+        inp=[image, mask, augment, img_width, img_height],
+        Tout=[tf.float32, tf.float32],
     )
-    sample["image"] = aug_img
+    sample["image"] = aug_data[0]
+    sample["mask"] = aug_data[1]
     return sample
 
 
@@ -60,70 +71,78 @@ def set_shapes(sample, config):
     img.set_shape((config.img_width, config.img_height, 1))
     mask.set_shape((config.img_width, config.img_height, 1))
     meta.set_shape((config.n_feature_cols))
-    prognosis.set_shape(())
-    death.set_shape(())
+    prognosis.set_shape((2))
+    death.set_shape((2))
 
     return {
         "image": img,
-        "mask" : mask,
+        "mask": mask,
         "meta": meta,
         "prognosis": prognosis,
-        "death": death
+        "death": death,
     }
 
-def process_sample(
-    img_file_name, meta, prognosis, death, config, augment=False
-):
+
+def process_sample(img_file_name, meta, prognosis, death, config, augment=False):
     img_path = tf.strings.join(
-        [config.preprocessed_image_base_path, img_file_name], separator=os.path.sep)
+        [config.preprocessed_image_base_path, img_file_name], separator=os.path.sep
+    )
     img = tf.io.read_file(img_path)
     img = tf.io.decode_png(img, channels=1)
     img = tf.image.convert_image_dtype(img, tf.float32)
 
-    if augment:
-        img = tf.image.random_jpeg_quality(img, 90, 100)
-        img = tf.image.random_contrast(img, 0.9, 1.1)
-        img = tf.image.random_brightness(img, max_delta=0.2)
-        img = tf.clip_by_value(img, 0, 1)
-
     mask_path = tf.strings.join(
-        [config.segmentation_base_path, img_file_name], separator=os.path.sep)
+        [config.segmentation_base_path, img_file_name], separator=os.path.sep
+    )
     mask = tf.io.read_file(mask_path)
     mask = tf.io.decode_png(mask, channels=1)
     mask = tf.image.convert_image_dtype(mask, tf.float32)
-
-    img = tf.image.resize(img, [config.img_height, config.img_width])
-    mask = tf.image.resize(mask, [config.img_height, config.img_width])
-
 
     return {
         "image": img,
         "mask": mask,
         "prognosis": prognosis,
         "death": death,
-        "meta": meta
+        "meta": meta,
     }
+
 
 def get_dataset(table_path):
     df = pd.read_csv(table_path)
 
-    death = df.pop("Death").to_numpy().flatten()
+    death = df.pop("Death").to_numpy().flatten().astype(int)
     prognosis = df.pop("Prognosis").to_numpy().flatten()
-    prognosis = [0. if prog=='MILD' else 1. for prog in prognosis]
+    prognosis = np.array([0 if prog == "MILD" else 1 for prog in prognosis]).astype(int)
     image = df.pop("ImageFile").to_numpy().flatten()
+
+    prognosis = tf.keras.utils.to_categorical(prognosis, num_classes=2)
+    death = tf.keras.utils.to_categorical(death, num_classes=2)
 
     meta = df.to_numpy()
 
     return (
-        np.array(image),
-        np.array(meta),
-        np.array(prognosis),
-        np.array(death),
+        image,
+        meta,
+        prognosis,
+        death,
     )
 
-def generate_data(config):
-    train_image, train_meta, train_prognosis, train_death = get_dataset(config.train_table)
-    valid_image, valid_meta, valid_prognosis, valid_death = get_dataset(config.valid_table)
+
+def generate_data(config, fold=None):
+    if fold is not None and config.cross_val_train:
+        train_image, train_meta, train_prognosis, train_death = get_dataset(
+            config.cv_train_table + f"cv{fold + 1}.csv"
+        )
+        valid_image, valid_meta, valid_prognosis, valid_death = get_dataset(
+            config.cv_valid_table + f"cv{fold + 1}.csv"
+        )
+    else:
+        train_image, train_meta, train_prognosis, train_death = get_dataset(
+            config.train_table
+        )
+        valid_image, valid_meta, valid_prognosis, valid_death = get_dataset(
+            config.valid_table
+        )
 
     print("Number of train images found: ", len(train_image))
     print("Number of validation images found: ", len(valid_image))
@@ -144,7 +163,7 @@ def generate_data(config):
         )
         .map(
             partial(
-                process_data,
+                augment_data,
                 augment=config.augment,
                 img_width=config.img_width,
                 img_height=config.img_height,
@@ -157,12 +176,11 @@ def generate_data(config):
         )
         .shuffle(buffer_size=5_000, reshuffle_each_iteration=True)
         .batch(config.batch_size)
+        .repeat()
         .prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     )
 
-    encode_single_sample_wrapped = partial(
-        process_sample, config=config
-    )
+    encode_single_sample_wrapped = partial(process_sample, config=config)
 
     validation_dataset = tf.data.Dataset.from_tensor_slices(
         (valid_image, valid_meta, valid_prognosis, valid_death)
@@ -174,7 +192,7 @@ def generate_data(config):
         )
         .map(
             partial(
-                process_data,
+                augment_data,
                 augment=False,
                 img_width=config.img_width,
                 img_height=config.img_height,
@@ -190,7 +208,7 @@ def generate_data(config):
     )
 
     if config.visualize:
-        _, ax = plt.subplots(2, 6, figsize=(12, 12))
+        _, ax = plt.subplots(2, 6, figsize=(10, 5))
         for batch in train_dataset.take(1):
             images = batch["image"]
             masks = batch["mask"]
@@ -202,15 +220,29 @@ def generate_data(config):
                 mask = (masks[i] * 255.0).numpy().astype("uint8")
                 ax[0, i].imshow(img, cmap="gray")
                 ax[1, i].imshow(mask, cmap="gray")
-                ax[0, i].set_title('Death: %d' % deaths.numpy()[i])
-                ax[1, i].set_title('Prognosis: %d' % progs.numpy()[i])
+                ax[0, i].set_title("Death: %d" % np.argmax(deaths.numpy()[i]))
+                ax[1, i].set_title("Prognosis: %d" % np.argmax(progs.numpy()[i]))
                 ax[0, i].axis("off")
                 ax[1, i].axis("off")
-                
-        plt.savefig( f"{config.raw_output_base}/batch_sample.png", dpi=75)
+
+        plt.savefig(f"{config.raw_output_base}/batch_sample.png", dpi=75)
         plt.close()
 
-    return {
-        "train_dataset": train_dataset,
-        "validation_dataset": validation_dataset
-    }
+    return {"train_dataset": train_dataset, "validation_dataset": validation_dataset}
+
+
+if __name__ == "__main__":
+    import hydra
+
+    @hydra.main(config_path="conf", config_name="train")
+    def run(config):
+        datasets = generate_data(config, 0)
+        for sample in datasets["train_dataset"].take(2):
+            print(sample["image"].numpy().shape)
+            print(sample["mask"].numpy().shape)
+            print(sample["death"].numpy().shape)
+            print(sample["prognosis"].numpy().shape)
+            print(sample["meta"].numpy().shape)
+            print("*" * 50)
+
+    run()

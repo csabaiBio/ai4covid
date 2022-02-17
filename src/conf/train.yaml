@@ -13,6 +13,14 @@ project: ai4covid
 n_feature_cols: 41
 
 visualize: True
-augment: False
+augment: True
 
 batch_size: 16
+epochs: 20
+learning_rate: 0.001
+steps_per_epoch: 500
+
+cross_val_train: True
+n_fold: 5
+cv_train_table: /home/qbeer/GitHub/ai4covid/data/preprocessed_data/tables/pop_avg/trainClinDataImputedPopAvg_
+cv_valid_table: /home/qbeer/GitHub/ai4covid/data/preprocessed_data/tables/pop_avg/validClinDataImputedPopAvg_

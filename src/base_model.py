@@ -78,11 +78,10 @@ def build_model(config):
     meta = Dense(128, activation="relu")(meta)
     meta = BatchNormalization(name="meta_bn2")(meta)
     meta = Dense(256, activation="relu")(meta)
-    meta = BatchNormalization(name="meta_bn3")(meta)
-    meta_out = Flatten(name="meta_flatten")(meta)
+    meta_out = BatchNormalization(name="meta_bn3")(meta)
 
     ## COMBINED HEAD
-    combined = Concatenate(axis=-1)([image_out, meta_out])
+    combined = Concatenate(axis=-1, name="concat_heads")([image_out, meta_out])
     out = Dense(256, activation="relu")(combined)
     out = BatchNormalization(name="head_bn1")(out)
     out = Dropout(0.2)(out)

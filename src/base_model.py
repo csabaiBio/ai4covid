@@ -87,7 +87,7 @@ def build_model(config):
     out = Dropout(0.2)(out)
     out = Dense(32, activation="relu")(out)
     out = BatchNormalization(name="head_bn2")(out)
-    p = Dense(2, activation="softmax")(out)
+    p = Dense(2, activation="softmax", name="model_output")(out)
 
     prognosis_out = BinaryEndpointLayer(name="prognosis_binary_loss")(prognosis, p)
 

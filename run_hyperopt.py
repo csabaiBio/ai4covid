@@ -19,7 +19,6 @@ from src.data import generate_data
 np.random.seed(42)
 tf.random.set_seed(137)
 os.environ["TF_CUDNN_DETERMINISTIC"] = "1"
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 random.seed(13742)
 
 tf.keras.backend.clear_session()
@@ -30,8 +29,10 @@ physical_devices = tf.config.list_physical_devices("GPU")
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 
-def run(config, fold=None):
-    datasets = generate_data(config, fold=fold)
+@hydra.main(config_path="src/conf", config_name="train")
+def run_experiments(config: DictConfig):
+    wandb.init(project=config.project, entity="elte-ai4covid")
+    datasets = generate_data(config, fold=np.random.randint(0, 5))
 
     model = build_model(config)
 
@@ -67,7 +68,7 @@ def run(config, fold=None):
         restore_best_weights=True,
     )
 
-    history = model.fit(
+    _ = model.fit(
         datasets["train_dataset"],
         validation_data=datasets["validation_dataset"],
         epochs=config.epochs,
@@ -75,32 +76,6 @@ def run(config, fold=None):
         callbacks=[WandbCallback(), cp_callback, early_stopping],
         verbose=0,
     )
-
-    return history
-
-
-@hydra.main(config_path="src/conf", config_name="train")
-def run_experiments(config: DictConfig):
-    cross_val_results: Dict = {}
-    if config.cross_val_train:
-        for fold in tqdm(range(config.n_folds)):
-            with wandb.init(project=config.project, entity="elte-ai4covid"):
-                history = run(config, fold)
-            for k in history.history.keys():
-                if cross_val_results.get(k, None) is not None:
-                    cross_val_results[k].append(history.history[k])
-                else:
-                    cross_val_results[k] = []
-        for k in cross_val_results.keys():
-            cross_val_results[k] = {
-                "mean": np.mean(cross_val_results[k]),
-                "std": np.std(cross_val_results[k]),
-            }
-        from pprint import pprint
-
-        pprint(cross_val_results)
-    else:
-        _ = run(config)
 
 
 if __name__ == "__main__":

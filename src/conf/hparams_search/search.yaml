@@ -1,0 +1,43 @@
+method: bayes
+metric:
+  goal: maximize
+  name: val_binary_accuracy
+parameters:
+  batch_size:
+    distribution: int_uniform
+    max: 32
+    min: 8
+  epochs:
+    distribution: int_uniform
+    max: 50
+    min: 15
+  img_height:
+    distribution: int_uniform
+    max: 512
+    min: 224
+  img_width:
+    distribution: int_uniform
+    max: 512
+    min: 224
+  learning_rate:
+    distribution: uniform
+    max: 0.02
+    min: 1e-05
+  steps_per_epoch:
+    distribution: int_uniform
+    max: 750
+    min: 150
+
+
+program: run_hyperopt.py
+
+command:
+- ${interpreter}
+- ${program}
+- ${args_no_hyphens}
+
+early_terminate:
+  eta: 3
+  max_iter: 2
+  s: 2
+  type: hyperband

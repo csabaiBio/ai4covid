@@ -5,28 +5,32 @@ metric:
 parameters:
   batch_size:
     distribution: int_uniform
-    max: 32
+    max: 16
     min: 8
   epochs:
     distribution: int_uniform
     max: 50
-    min: 15
+    min: 25
   img_height:
     distribution: int_uniform
-    max: 512
-    min: 224
+    max: 500
+    min: 240
   img_width:
     distribution: int_uniform
-    max: 512
-    min: 224
+    max: 500
+    min: 350
   learning_rate:
     distribution: uniform
     max: 0.02
     min: 1e-05
   steps_per_epoch:
     distribution: int_uniform
-    max: 750
-    min: 150
+    max: 450
+    min: 350
+  death_rate:
+    distribution: uniform
+    max: 2.0
+    min: 0.01
 
 
 program: run_hyperopt.py

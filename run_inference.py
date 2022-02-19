@@ -28,7 +28,7 @@ def run_inference(chkpt_dir: str, save_model: bool = False):
             model.get_layer(name="mask").input,
             model.get_layer(name="meta").input,
         ],
-        model.get_layer(name="model_output").output,
+        model.get_layer(name="prognosis_out").output,
     )
 
     prediction_model.summary()

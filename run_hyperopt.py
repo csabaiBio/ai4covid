@@ -29,7 +29,7 @@ physical_devices = tf.config.list_physical_devices("GPU")
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 
-@hydra.main(config_path="src/conf", config_name="train")
+@hydra.main(config_path="src/conf", config_name="train_pop_sampled")
 def run_experiments(config: DictConfig):
     wandb.init(project=config.project, entity="elte-ai4covid")
     datasets = generate_data(config, fold=np.random.randint(0, 5))

@@ -8,36 +8,53 @@ from tensorflow.keras.layers import (
     Dropout,
     Flatten,
     Input,
+    Lambda,
+    Softmax,
 )
 
 tf.random.set_seed(137)
 
 
 class BinaryEndpointLayer(layers.Layer):
-    def __init__(self, name=None):
+    def __init__(self, config, name=None):
         super().__init__(name=name)
-        self.binary_metrics = [
-            tf.keras.metrics.BinaryAccuracy(),
-            tf.keras.metrics.BinaryCrossentropy(),
-            tf.keras.metrics.Precision(),
-            tf.keras.metrics.Recall(name="sensitivity"),
-            tf.keras.metrics.PrecisionAtRecall(0.5, name="precision_at_50_pct_recall"),
-            tf.keras.metrics.PrecisionAtRecall(0.75, name="precision_at_75_pct_recall"),
-            tf.keras.metrics.PrecisionAtRecall(0.95, name="precision_at_95_pct_recall"),
-            tf.keras.metrics.SpecificityAtSensitivity(
-                0.5, name="specificity_at_50_pct_recall"
-            ),
-            tf.keras.metrics.SpecificityAtSensitivity(
-                0.75, name="specificity_at_75_pct_recall"
-            ),
-            tf.keras.metrics.SpecificityAtSensitivity(
-                0.95, name="specificity_at_95_pct_recall"
-            ),
-        ]
+        if name == "prognosis_binary_loss":
+            self.binary_metrics = [
+                tf.keras.metrics.BinaryAccuracy(),
+                tf.keras.metrics.BinaryCrossentropy(),
+                tf.keras.metrics.Precision(),
+                tf.keras.metrics.Recall(name="sensitivity"),
+                tf.keras.metrics.PrecisionAtRecall(
+                    0.5, name="precision_at_50_pct_recall"
+                ),
+                tf.keras.metrics.PrecisionAtRecall(
+                    0.75, name="precision_at_75_pct_recall"
+                ),
+                tf.keras.metrics.PrecisionAtRecall(
+                    0.95, name="precision_at_95_pct_recall"
+                ),
+                tf.keras.metrics.SpecificityAtSensitivity(
+                    0.5, name="specificity_at_50_pct_recall"
+                ),
+                tf.keras.metrics.SpecificityAtSensitivity(
+                    0.75, name="specificity_at_75_pct_recall"
+                ),
+                tf.keras.metrics.SpecificityAtSensitivity(
+                    0.95, name="specificity_at_95_pct_recall"
+                ),
+            ]
+            self.rate = 1.0
+        else:
+            self.binary_metrics = [
+                tf.keras.metrics.BinaryAccuracy(name="death_binary_accuracy"),
+                tf.keras.metrics.BinaryCrossentropy(name="death_binary_crossentropy"),
+                tf.keras.metrics.Precision(name="death_precision"),
+            ]
+            self.rate = config.death_rate
 
     def call(self, y_true, y_pred):
         loss = tf.keras.losses.binary_crossentropy(y_true, y_pred)
-        self.add_loss(loss)
+        self.add_loss(self.rate * loss)
         for metric in self.binary_metrics:
             self.add_metric(metric(y_true, y_pred))
         return y_pred
@@ -87,13 +104,22 @@ def build_model(config):
     out = Dropout(0.2)(out)
     out = Dense(32, activation="relu")(out)
     out = BatchNormalization(name="head_bn2")(out)
-    p = Dense(2, activation="softmax", name="model_output")(out)
+    out = Dense(4, activation="linear", name="unnormalized_output")(out)
 
-    prognosis_out = BinaryEndpointLayer(name="prognosis_binary_loss")(prognosis, p)
+    p, d = Lambda(lambda x: tf.split(x, num_or_size_splits=2, axis=1), name="outputs")(
+        out
+    )
+    p = Softmax(name="prognosis_out")(p)
+    d = Softmax(name="death_out")(d)
+
+    prognosis_out = BinaryEndpointLayer(name="prognosis_binary_loss", config=config)(
+        prognosis, p
+    )
+    death_out = BinaryEndpointLayer(name="death_binary_loss", config=config)(death, d)
 
     model = keras.models.Model(
         inputs=[input_img, input_mask, input_meta, prognosis, death],
-        outputs=[prognosis_out],
+        outputs=[prognosis_out, death_out],
         name="model_v1",
     )
 

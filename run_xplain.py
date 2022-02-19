@@ -19,7 +19,6 @@ from src.data import generate_data
 np.random.seed(42)
 tf.random.set_seed(137)
 os.environ["TF_CUDNN_DETERMINISTIC"] = "1"
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 random.seed(13742)
 
 tf.keras.backend.clear_session()

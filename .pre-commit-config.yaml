@@ -9,6 +9,7 @@ repos:
     rev: "v0.910" # Use the sha / tag you want to point at
     hooks:
       - id: mypy
+        exclude: brixia
         args: ["--allow-untyped-globals", "--ignore-missing-imports", "--allow-untyped-defs"]
 
   - repo: https://github.com/pycqa/isort

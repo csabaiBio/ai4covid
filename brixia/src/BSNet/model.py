@@ -1,70 +1,139 @@
-from .builder import build_xnet, STN, build_BScore
-from .utils import freeze_model
-from .blocks import BilinearInterpolation
-from .backbones import get_backbone
-from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input
+from tensorflow.keras.models import Model
+
+from .backbones import get_backbone
+from .blocks import BilinearInterpolation
+from .builder import STN, build_BScore, build_xnet
+from .utils import freeze_model
 
 DEFAULT_SKIP_CONNECTIONS = {
-    'vgg16': ('block5_conv3', 'block4_conv3', 'block3_conv3', 'block2_conv2', 'block1_conv2',
-              'block5_pool', 'block4_pool', 'block3_pool', 'block2_pool', 'block1_pool',
-              ),
-    'vgg19': ('block5_conv4', 'block4_conv4', 'block3_conv4', 'block2_conv2', 'block1_conv2',
-              'block5_pool', 'block4_pool', 'block3_pool', 'block2_pool', 'block1_pool',
-              ),
-    'resnet18': ('stage4_unit1_relu1', 'stage3_unit1_relu1', 'stage2_unit1_relu1', 'relu0',
-                 'relu1', 'stage3_unit2_relu1', 'stage2_unit2_relu1', 'stage1_unit2_relu1',
-                 ),
-    'resnet34': ('stage4_unit1_relu1', 'stage3_unit1_relu1', 'stage2_unit1_relu1', 'relu0',
-                 'relu1', 'stage3_unit2_relu1', 'stage2_unit2_relu1', 'stage1_unit2_relu1',
-                 ),
-    'resnet50': ('stage4_unit1_relu1', 'stage3_unit1_relu1', 'stage2_unit1_relu1', 'relu0',
-                 'relu1', 'stage3_unit2_relu1', 'stage2_unit2_relu1', 'stage1_unit2_relu1',
-                 ),
-    'resnet101': ('stage4_unit1_relu1', 'stage3_unit1_relu1', 'stage2_unit1_relu1', 'relu0',
-                  'relu1', 'stage3_unit2_relu1', 'stage2_unit2_relu1', 'stage1_unit2_relu1',
-                  ),
-    'resnet152': ('stage4_unit1_relu1', 'stage3_unit1_relu1', 'stage2_unit1_relu1', 'relu0',
-                  'relu1', 'stage3_unit2_relu1', 'stage2_unit2_relu1', 'stage1_unit2_relu1',
-                  ),
-    'resnext50': ('stage4_unit1_relu1', 'stage3_unit1_relu1', 'stage2_unit1_relu1', 'relu0',
-                  'stage4_unit1_relu1', 'stage3_unit2_relu1', 'stage2_unit2_relu1', 'stage1_unit2_relu1',
-                  ),
-    'resnext101': ('stage4_unit1_relu1', 'stage3_unit1_relu1', 'stage2_unit1_relu1', 'relu0',
-                   'stage4_unit1_relu1', 'stage3_unit2_relu1', 'stage2_unit2_relu1', 'stage1_unit2_relu1',
-                   ),
-    'inceptionv3': (228, 86, 16, 9),
-    'inceptionresnetv2': (594, 260, 16, 9),
-    'densenet121': (311, 139, 51, 4),
-    'densenet169': (367, 139, 51, 4),
-    'densenet201': (479, 139, 51, 4),
+    "vgg16": (
+        "block5_conv3",
+        "block4_conv3",
+        "block3_conv3",
+        "block2_conv2",
+        "block1_conv2",
+        "block5_pool",
+        "block4_pool",
+        "block3_pool",
+        "block2_pool",
+        "block1_pool",
+    ),
+    "vgg19": (
+        "block5_conv4",
+        "block4_conv4",
+        "block3_conv4",
+        "block2_conv2",
+        "block1_conv2",
+        "block5_pool",
+        "block4_pool",
+        "block3_pool",
+        "block2_pool",
+        "block1_pool",
+    ),
+    "resnet18": (
+        "stage4_unit1_relu1",
+        "stage3_unit1_relu1",
+        "stage2_unit1_relu1",
+        "relu0",
+        "relu1",
+        "stage3_unit2_relu1",
+        "stage2_unit2_relu1",
+        "stage1_unit2_relu1",
+    ),
+    "resnet34": (
+        "stage4_unit1_relu1",
+        "stage3_unit1_relu1",
+        "stage2_unit1_relu1",
+        "relu0",
+        "relu1",
+        "stage3_unit2_relu1",
+        "stage2_unit2_relu1",
+        "stage1_unit2_relu1",
+    ),
+    "resnet50": (
+        "stage4_unit1_relu1",
+        "stage3_unit1_relu1",
+        "stage2_unit1_relu1",
+        "relu0",
+        "relu1",
+        "stage3_unit2_relu1",
+        "stage2_unit2_relu1",
+        "stage1_unit2_relu1",
+    ),
+    "resnet101": (
+        "stage4_unit1_relu1",
+        "stage3_unit1_relu1",
+        "stage2_unit1_relu1",
+        "relu0",
+        "relu1",
+        "stage3_unit2_relu1",
+        "stage2_unit2_relu1",
+        "stage1_unit2_relu1",
+    ),
+    "resnet152": (
+        "stage4_unit1_relu1",
+        "stage3_unit1_relu1",
+        "stage2_unit1_relu1",
+        "relu0",
+        "relu1",
+        "stage3_unit2_relu1",
+        "stage2_unit2_relu1",
+        "stage1_unit2_relu1",
+    ),
+    "resnext50": (
+        "stage4_unit1_relu1",
+        "stage3_unit1_relu1",
+        "stage2_unit1_relu1",
+        "relu0",
+        "stage4_unit1_relu1",
+        "stage3_unit2_relu1",
+        "stage2_unit2_relu1",
+        "stage1_unit2_relu1",
+    ),
+    "resnext101": (
+        "stage4_unit1_relu1",
+        "stage3_unit1_relu1",
+        "stage2_unit1_relu1",
+        "relu0",
+        "stage4_unit1_relu1",
+        "stage3_unit2_relu1",
+        "stage2_unit2_relu1",
+        "stage1_unit2_relu1",
+    ),
+    "inceptionv3": (228, 86, 16, 9),
+    "inceptionresnetv2": (594, 260, 16, 9),
+    "densenet121": (311, 139, 51, 4),
+    "densenet169": (367, 139, 51, 4),
+    "densenet201": (479, 139, 51, 4),
 }
 
 
-def BSNet(backbone_name='resnet18',
-          input_shape=(512, 512, 1),
-          input_tensor=None,
-          encoder_weights=None,
-          freeze_encoder=True,
-          skip_connections='default',
-          decoder_block_type='transpose',
-          decoder_filters=(256, 128, 64, 32, 16),
-          decoder_use_batchnorm=True,
-          n_upsample_blocks=5,
-          upsample_rates=(2, 2, 2, 2, 2),
-          classes=4,
-          activation='sigmoid',
-          load_seg_model=True,
-          seg_model_weights='./weights/segmentation-model.h5',
-          freeze_segmentation=True,
-          load_align_model=True,
-          align_model_weights='./weights/alignment-model.h5',
-          freeze_align_model=True,
-          pretrain_aligment_net=False,
-          explict_self_attention=True,
-          load_bscore_model=True,
-          bscore_model_weights='./weights/bscore-model.h5'
-          ):
+def BSNet(
+    backbone_name="resnet18",
+    input_shape=(512, 512, 1),
+    input_tensor=None,
+    encoder_weights=None,
+    freeze_encoder=True,
+    skip_connections="default",
+    decoder_block_type="transpose",
+    decoder_filters=(256, 128, 64, 32, 16),
+    decoder_use_batchnorm=True,
+    n_upsample_blocks=5,
+    upsample_rates=(2, 2, 2, 2, 2),
+    classes=4,
+    activation="sigmoid",
+    load_seg_model=True,
+    seg_model_weights="./weights/segmentation-model.h5",
+    freeze_segmentation=True,
+    load_align_model=True,
+    align_model_weights="./weights/alignment-model.h5",
+    freeze_align_model=True,
+    pretrain_aligment_net=False,
+    explict_self_attention=True,
+    load_bscore_model=True,
+    bscore_model_weights="./weights/bscore-model.h5",
+):
     """
 
     Args:
@@ -100,30 +169,34 @@ def BSNet(backbone_name='resnet18',
 
     """
 
-    backbone = get_backbone(backbone_name,
-                            input_shape=input_shape,
-                            input_tensor=input_tensor,
-                            weights=encoder_weights,
-                            include_top=False)
+    backbone = get_backbone(
+        backbone_name,
+        input_shape=input_shape,
+        input_tensor=input_tensor,
+        weights=encoder_weights,
+        include_top=False,
+    )
 
-    if skip_connections == 'default':
+    if skip_connections == "default":
         skip_connections = DEFAULT_SKIP_CONNECTIONS[backbone_name]
 
-    seg_model = build_xnet(backbone,
-                           classes=1,
-                           skip_connection_layers=skip_connections,
-                           decoder_filters=decoder_filters,
-                           block_type=decoder_block_type,
-                           activation=activation,
-                           n_upsample_blocks=n_upsample_blocks,
-                           upsample_rates=upsample_rates,
-                           use_batchnorm=decoder_use_batchnorm)
+    seg_model = build_xnet(
+        backbone,
+        classes=1,
+        skip_connection_layers=skip_connections,
+        decoder_filters=decoder_filters,
+        block_type=decoder_block_type,
+        activation=activation,
+        n_upsample_blocks=n_upsample_blocks,
+        upsample_rates=upsample_rates,
+        use_batchnorm=decoder_use_batchnorm,
+    )
 
     # lock encoder weights for fine-tuning
     if freeze_encoder:
         freeze_model(backbone)
 
-    seg_model._name = 'x-{}'.format(backbone_name)
+    seg_model._name = "x-{}".format(backbone_name)
 
     if load_seg_model:
         print("Loading segmentation model")
@@ -141,31 +214,40 @@ def BSNet(backbone_name='resnet18',
     else:
         input_data = seg_model.output
 
-    locnet = STN(in_shape=input_data.shape,
-                 mask_resize=128,
-                 network_structure=((20, 5), (20, 5)),
-                 dense_neurons=50,
-                 load_align_model=load_align_model,
-                 align_model_weights=align_model_weights,
-                 freeze_align_model=freeze_align_model
-                 )(input_data)
+    locnet = STN(
+        in_shape=input_data.shape,
+        mask_resize=128,
+        network_structure=((20, 5), (20, 5)),
+        dense_neurons=50,
+        load_align_model=load_align_model,
+        align_model_weights=align_model_weights,
+        freeze_align_model=freeze_align_model,
+    )(input_data)
 
-    x = BilinearInterpolation(input_shape[:2], name='alignmnet_segmentation')([backbone.input, locnet])
+    # backbone.input előtt az volt, hogy seg_model.output
+    x = BilinearInterpolation(input_shape[:2], name="alignmnet_segmentation")(
+        [backbone.input, locnet]
+    )
 
     if pretrain_aligment_net:
         align_model = Model(input_data, x)
     else:
         align_model = Model(backbone.input, x)
 
-    bscore_model = build_BScore(align_model,
-                                skip_connection_layers=('stage1_unit1_relu1', 'stage2_unit2_relu1',
-                                                        'stage3_unit2_relu1', 'stage4_unit2_relu1'),
-                                explict_self_attention=explict_self_attention,
-                                pyramid_feature_size=64,
-                                classes=classes,
-                                class_width=8,
-                                class_depth=3
-                                )
+    bscore_model = build_BScore(
+        align_model,
+        skip_connection_layers=(
+            "stage1_unit1_relu1",
+            "stage2_unit2_relu1",
+            "stage3_unit2_relu1",
+            "stage4_unit2_relu1",
+        ),
+        explict_self_attention=explict_self_attention,
+        pyramid_feature_size=64,
+        classes=classes,
+        class_width=8,
+        class_depth=3,
+    )
 
     if load_bscore_model:
         print("Loading BScore model")

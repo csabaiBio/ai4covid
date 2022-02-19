@@ -4,7 +4,7 @@ import pandas as pd
 
 class TableProcessor:
     def __init__(self, config) -> None:
-        self.train_data = pd.read_excel(config.table_path)
+        self.train_data = pd.read_excel(config.train_table_path)
         self.train_data.drop(["Prognosis", "Death"], axis=1, inplace=True)
         hospitals = pd.get_dummies(
             self.train_data["Hospital"], prefix_sep="_", prefix="Hospital"

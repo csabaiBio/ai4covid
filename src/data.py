@@ -83,16 +83,26 @@ def set_shapes(sample, config):
     }
 
 
-def process_sample(img_file_name, meta, prognosis, death, config, augment=False):
+def process_sample(img_file_name, meta, prognosis, death, config, test=False):
     img_path = tf.strings.join(
-        [config.preprocessed_image_base_path, img_file_name], separator=os.path.sep
+        [
+            config.preprocessed_image_base_path.replace(
+                "train", "test" if test else "train"
+            ),
+            img_file_name,
+        ],
+        separator=os.path.sep,
     )
     img = tf.io.read_file(img_path)
     img = tf.io.decode_png(img, channels=1)
     img = tf.image.convert_image_dtype(img, tf.float32)
 
     mask_path = tf.strings.join(
-        [config.segmentation_base_path, img_file_name], separator=os.path.sep
+        [
+            config.segmentation_base_path.replace("train", "test" if test else "train"),
+            img_file_name,
+        ],
+        separator=os.path.sep,
     )
     mask = tf.io.read_file(mask_path)
     mask = tf.io.decode_png(mask, channels=1)
@@ -107,12 +117,20 @@ def process_sample(img_file_name, meta, prognosis, death, config, augment=False)
     }
 
 
-def get_dataset(table_path):
+def get_dataset(table_path, test=False):
     df = pd.read_csv(table_path)
 
     death = df.pop("Death").to_numpy().flatten().astype(int)
     prognosis = df.pop("Prognosis").to_numpy().flatten()
-    prognosis = np.array([0 if prog == "MILD" else 1 for prog in prognosis]).astype(int)
+
+    if not test:
+        prognosis = np.array([0 if prog == "MILD" else 1 for prog in prognosis]).astype(
+            int
+        )
+    else:
+        prognosis = np.random.randint(0, 1, size=len(prognosis))
+        death = np.random.randint(0, 1, size=len(death))
+
     image = df.pop("ImageFile").to_numpy().flatten()
 
     prognosis = tf.keras.utils.to_categorical(prognosis, num_classes=2)
@@ -147,11 +165,7 @@ def generate_data(config, fold=None):
     print("Number of train images found: ", len(train_image))
     print("Number of validation images found: ", len(valid_image))
 
-    encode_single_sample_wrapped = partial(
-        process_sample,
-        config=config,
-        augment=config.augment,
-    )
+    encode_single_sample_wrapped = partial(process_sample, config=config)
 
     train_dataset = tf.data.Dataset.from_tensor_slices(
         (train_image, train_meta, train_prognosis, train_death)
@@ -179,8 +193,6 @@ def generate_data(config, fold=None):
         .repeat()
         .prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     )
-
-    encode_single_sample_wrapped = partial(process_sample, config=config)
 
     validation_dataset = tf.data.Dataset.from_tensor_slices(
         (valid_image, valid_meta, valid_prognosis, valid_death)
@@ -229,6 +241,43 @@ def generate_data(config, fold=None):
         plt.close()
 
     return {"train_dataset": train_dataset, "validation_dataset": validation_dataset}
+
+
+def generate_test_data(config):
+    test_image, test_meta, test_prognosis, test_death = get_dataset(
+        config.test_table, test=True
+    )
+
+    print("Number of test images found: ", len(test_image))
+
+    encode_single_sample_wrapped = partial(process_sample, config=config, test=True)
+
+    test_dataset = tf.data.Dataset.from_tensor_slices(
+        (test_image, test_meta, test_prognosis, test_death)
+    )
+    test_dataset = (
+        test_dataset.map(
+            encode_single_sample_wrapped,
+            num_parallel_calls=tf.data.experimental.AUTOTUNE,
+        )
+        .map(
+            partial(
+                augment_data,
+                augment=False,
+                img_width=config.img_width,
+                img_height=config.img_height,
+            ),
+            num_parallel_calls=tf.data.experimental.AUTOTUNE,
+        )
+        .map(
+            partial(set_shapes, config=config),
+            num_parallel_calls=tf.data.experimental.AUTOTUNE,
+        )
+        .batch(config.batch_size)
+        .prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+    )
+
+    return test_dataset, test_image
 
 
 if __name__ == "__main__":

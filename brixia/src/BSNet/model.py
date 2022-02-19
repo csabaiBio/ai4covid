@@ -229,13 +229,33 @@ def BSNet(
         [backbone.input, locnet]
     )
 
+    y = BilinearInterpolation(input_shape[:2], name='alignmnet_segmentation')(
+        [seg_model.output, locnet])
+
     if pretrain_aligment_net:
         align_model = Model(input_data, x)
+        align_model_original = Model(input_data, y)
     else:
         align_model = Model(backbone.input, x)
+        align_model_original = Model(backbone.input, y)
 
     bscore_model = build_BScore(
         align_model,
+        skip_connection_layers=(
+            "stage1_unit1_relu1",
+            "stage2_unit2_relu1",
+            "stage3_unit2_relu1",
+            "stage4_unit2_relu1",
+        ),
+        explict_self_attention=explict_self_attention,
+        pyramid_feature_size=64,
+        classes=classes,
+        class_width=8,
+        class_depth=3,
+    )
+
+    bscore_model_original = build_BScore(
+        align_model_original,
         skip_connection_layers=(
             "stage1_unit1_relu1",
             "stage2_unit2_relu1",
@@ -253,7 +273,8 @@ def BSNet(
         print("Loading BScore model")
         try:
             bscore_model.load_weights(bscore_model_weights)
+            bscore_model_original.load_weights(bscore_model_weights)
         except ValueError as e:
             print(f"Loading a wrong weight checkpoint for BScore model. {e}")
 
-    return seg_model, align_model, bscore_model
+    return seg_model, align_model, bscore_model, bscore_model_original

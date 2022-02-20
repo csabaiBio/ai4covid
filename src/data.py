@@ -87,7 +87,7 @@ def process_sample(img_file_name, meta, prognosis, death, config, test=False):
     img_path = tf.strings.join(
         [
             config.preprocessed_image_base_path.replace(
-                "train", "test" if test else "train"
+                "train", "train" if test else "train"
             ),
             img_file_name,
         ],
@@ -99,7 +99,9 @@ def process_sample(img_file_name, meta, prognosis, death, config, test=False):
 
     mask_path = tf.strings.join(
         [
-            config.segmentation_base_path.replace("train", "test" if test else "train"),
+            config.segmentation_base_path.replace(
+                "train", "train" if test else "train"
+            ),
             img_file_name,
         ],
         separator=os.path.sep,

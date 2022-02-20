@@ -1,0 +1,51 @@
+method: bayes
+metric:
+  goal: maximize
+  name: val_binary_accuracy
+parameters:
+  batch_size:
+    distribution: int_uniform
+    max: 12
+    min: 4
+  epochs:
+    distribution: int_uniform
+    max: 100
+    min: 50
+  learning_rate:
+    distribution: uniform
+    max: 0.001
+    min: 1e-05
+  steps_per_epoch:
+    distribution: int_uniform
+    max: 750
+    min: 500
+  cnn_encode_dim:
+    distribution: int_uniform
+    max: 512
+    min: 256
+  transformer_encode_dim:
+    distribution: int_uniform
+    max: 200
+    min: 100
+  transformer_heads:
+    distribution: int_uniform
+    max: 16
+    min: 8
+  bahdanau_dim:
+    distribution: int_uniform
+    max: 200
+    min: 100
+
+
+program: run_xplain.py
+
+command:
+- ${interpreter}
+- ${program}
+- ${args_no_hyphens}
+
+early_terminate:
+  eta: 3
+  max_iter: 2
+  s: 2
+  type: hyperband

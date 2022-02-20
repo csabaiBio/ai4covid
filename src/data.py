@@ -67,23 +67,26 @@ def set_shapes(sample, config):
     meta = sample["meta"]
     prognosis = sample["prognosis"]
     death = sample["death"]
+    brixia = sample["brixia"]
 
     img.set_shape((config.img_width, config.img_height, 1))
     mask.set_shape((config.img_width, config.img_height, 1))
     meta.set_shape((config.n_feature_cols))
     prognosis.set_shape((2))
     death.set_shape((2))
+    brixia.set_shape((6))
 
     return {
         "image": img,
         "mask": mask,
         "meta": meta,
+        "brixia": brixia,
         "prognosis": prognosis,
         "death": death,
     }
 
 
-def process_sample(img_file_name, meta, prognosis, death, config, test=False):
+def process_sample(img_file_name, meta, brixia, prognosis, death, config, test=False):
     img_path = tf.strings.join(
         [
             config.preprocessed_image_base_path.replace(
@@ -113,13 +116,14 @@ def process_sample(img_file_name, meta, prognosis, death, config, test=False):
     return {
         "image": img,
         "mask": mask,
+        "brixia": brixia,
         "prognosis": prognosis,
         "death": death,
         "meta": meta,
     }
 
 
-def get_dataset(table_path, test=False):
+def get_dataset(table_path, brixia_score_base_path, test=False):
     df = pd.read_csv(table_path)
 
     death = df.pop("Death").to_numpy().flatten().astype(int)
@@ -132,6 +136,7 @@ def get_dataset(table_path, test=False):
     else:
         prognosis = np.random.randint(0, 1, size=len(prognosis))
         death = np.random.randint(0, 1, size=len(death))
+        brixia_score_base_path = brixia_score_base_path.replace("train", "test")
 
     image = df.pop("ImageFile").to_numpy().flatten()
 
@@ -140,9 +145,19 @@ def get_dataset(table_path, test=False):
 
     meta = df.to_numpy()
 
+    brixia = np.array(
+        [
+            np.loadtxt(
+                os.path.join(brixia_score_base_path, image_name.replace("png", "txt"))
+            ).flatten()
+            for image_name in image
+        ]
+    )
+
     return (
         image,
         meta,
+        brixia,
         prognosis,
         death,
     )
@@ -150,19 +165,39 @@ def get_dataset(table_path, test=False):
 
 def generate_data(config, fold=None):
     if fold is not None and config.cross_val_train:
-        train_image, train_meta, train_prognosis, train_death = get_dataset(
-            config.cv_train_table + f"cv{fold + 1}.csv"
+        (
+            train_image,
+            train_meta,
+            train_brixia,
+            train_prognosis,
+            train_death,
+        ) = get_dataset(
+            config.cv_train_table + f"cv{fold + 1}.csv", config.brixia_score_base_path
         )
-        valid_image, valid_meta, valid_prognosis, valid_death = get_dataset(
-            config.cv_valid_table + f"cv{fold + 1}.csv"
+        (
+            valid_image,
+            valid_meta,
+            valid_brixia,
+            valid_prognosis,
+            valid_death,
+        ) = get_dataset(
+            config.cv_valid_table + f"cv{fold + 1}.csv", config.brixia_score_base_path
         )
     else:
-        train_image, train_meta, train_prognosis, train_death = get_dataset(
-            config.train_table
-        )
-        valid_image, valid_meta, valid_prognosis, valid_death = get_dataset(
-            config.valid_table
-        )
+        (
+            train_image,
+            train_meta,
+            train_brixia,
+            train_prognosis,
+            train_death,
+        ) = get_dataset(config.train_table, config.brixia_score_base_path)
+        (
+            valid_image,
+            valid_meta,
+            valid_brixia,
+            valid_prognosis,
+            valid_death,
+        ) = get_dataset(config.valid_table, config.brixia_score_base_path)
 
     print("Number of train images found: ", len(train_image))
     print("Number of validation images found: ", len(valid_image))
@@ -170,7 +205,7 @@ def generate_data(config, fold=None):
     encode_single_sample_wrapped = partial(process_sample, config=config)
 
     train_dataset = tf.data.Dataset.from_tensor_slices(
-        (train_image, train_meta, train_prognosis, train_death)
+        (train_image, train_meta, train_brixia, train_prognosis, train_death)
     )
     train_dataset = (
         train_dataset.map(
@@ -197,7 +232,7 @@ def generate_data(config, fold=None):
     )
 
     validation_dataset = tf.data.Dataset.from_tensor_slices(
-        (valid_image, valid_meta, valid_prognosis, valid_death)
+        (valid_image, valid_meta, valid_brixia, valid_prognosis, valid_death)
     )
     validation_dataset = (
         validation_dataset.map(
@@ -246,7 +281,7 @@ def generate_data(config, fold=None):
 
 
 def generate_test_data(config):
-    test_image, test_meta, test_prognosis, test_death = get_dataset(
+    test_image, test_meta, test_brixia, test_prognosis, test_death = get_dataset(
         config.test_table, test=True
     )
 
@@ -255,7 +290,7 @@ def generate_test_data(config):
     encode_single_sample_wrapped = partial(process_sample, config=config, test=True)
 
     test_dataset = tf.data.Dataset.from_tensor_slices(
-        (test_image, test_meta, test_prognosis, test_death)
+        (test_image, test_meta, test_brixia, test_prognosis, test_death)
     )
     test_dataset = (
         test_dataset.map(
@@ -285,7 +320,7 @@ def generate_test_data(config):
 if __name__ == "__main__":
     import hydra
 
-    @hydra.main(config_path="conf", config_name="train")
+    @hydra.main(config_path="conf", config_name="train_pop_avg")
     def run(config):
         datasets = generate_data(config, 0)
         for sample in datasets["train_dataset"].take(2):
@@ -294,6 +329,7 @@ if __name__ == "__main__":
             print(sample["death"].numpy().shape)
             print(sample["prognosis"].numpy().shape)
             print(sample["meta"].numpy().shape)
+            print(sample["brixia"].numpy().shape)
             print("*" * 50)
 
     run()

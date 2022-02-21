@@ -100,6 +100,13 @@ class ImageProcessor:
         img = cv2.medianBlur(img, 3)
         img = np.array(img) / 255.0
         return img
+    
+    def normalize_fourier_image(self, img):
+        img = (img - np.min(img)) / (np.max(img) - np.min(img))  # min-max scaling
+        img = (img * 255).astype("uint8")
+        img = cv2.medianBlur(img, 3)
+        img = np.array(img) / 255.0
+        return img
 
     def save_images(self, images, name):
         Path(os.path.join(self.config.output_base_path, "aligned")).mkdir(
@@ -114,6 +121,9 @@ class ImageProcessor:
         Path(os.path.join(self.config.output_base_path, "score_original")).mkdir(
             parents=True, exist_ok=True
         )
+        Path(os.path.join(self.config.output_base_path, "fourier_2d")).mkdir(
+            parents=True, exist_ok=True
+        )
 
         segmented_image = images["segmented_image"]
         cv2.imwrite(
@@ -126,6 +136,13 @@ class ImageProcessor:
             os.path.join(self.config.output_base_path, "aligned", f"{name}.png"),
             (aligned_image * 255.0).astype("uint8"),
         )
+
+        fourier_image = images["fourier_image"]
+        cv2.imwrite(
+            os.path.join(self.config.output_base_path, "fourier_2d", f"{name}.png"),
+            (fourier_image * 255.0).astype("uint8"),
+        )
+
         score = images["score"]
         np.savetxt( 
             os.path.join(self.config.output_base_path, "score", f"{name}.txt" ),
@@ -158,6 +175,11 @@ class ImageProcessor:
         with tf.device("/cpu:0"):
             score_original = np.argmax( self.nets["score_model_original"].predict(
                 np.expand_dims(image, [0, -1])), axis=-1 ).flatten()
+        
+        f = np.fft.fft2(image)
+        f_s = np.fft.fftshift(f)
+        image_f = np.log(abs(f_s))
+        image_f = self.normalize_fourier_image(image_f)
 
         output = {
             "aligned_image": aligned_image[0],
@@ -169,6 +191,7 @@ class ImageProcessor:
                     -1,
                 )
             ),
+            "fourier_image" : image_f,
             "score": score,
             "score_original": score_original,
         }

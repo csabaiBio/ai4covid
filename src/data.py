@@ -136,7 +136,7 @@ def get_dataset(table_path, brixia_score_base_path, test=False):
     else:
         prognosis = np.random.randint(0, 1, size=len(prognosis))
         death = np.random.randint(0, 1, size=len(death))
-        brixia_score_base_path = brixia_score_base_path.replace("train", "test")
+        brixia_score_base_path = brixia_score_base_path  # .replace("train", "test")
 
     image = df.pop("ImageFile").to_numpy().flatten()
 
@@ -282,7 +282,9 @@ def generate_data(config, fold=None):
 
 def generate_test_data(config):
     test_image, test_meta, test_brixia, test_prognosis, test_death = get_dataset(
-        config.test_table, test=True
+        config.test_table,
+        brixia_score_base_path=config.brixia_score_base_path,
+        test=True,
     )
 
     print("Number of test images found: ", len(test_image))

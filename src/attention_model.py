@@ -2,7 +2,9 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.keras.layers import (
+    LSTM,
     BatchNormalization,
+    Bidirectional,
     Concatenate,
     Dense,
     Dropout,
@@ -106,20 +108,17 @@ class BahdanauAttention(tf.keras.Model):
         # features(CNN_encoder output) shape == (batch_size, 64, embedding_dim)
 
         # hidden shape == (batch_size, hidden_size)
-        # hidden_with_time_axis shape == (batch_size, 1, n_hidden, hidden_size)
-        hidden_with_time_axis = tf.expand_dims(hidden, 1)
-        hidden_with_time_axis = tf.unstack(hidden_with_time_axis, axis=2)
-        # features shape == (batch_size, 64, 1, embedding_dim)
-        features_with_extra_axis = tf.expand_dims(features, 2)
+        # hidden_with_time_axis shape == (batch_size, n_hidden, hidden_size)
+        hidden_with_time_axis = tf.unstack(hidden, axis=1)
 
         all_context_vectors = []
         all_attention_weights = []
 
         for ind, hidden in enumerate(hidden_with_time_axis):
-            # attention_hidden_layer shape == (batch_size, 64, 1, units)
             hidden = tf.expand_dims(hidden, 1)
+            # attention_hidden_layer shape == (batch_size, 64, 1, units)
             attention_hidden_layer = tf.nn.tanh(
-                self.W1s[ind](features_with_extra_axis) + self.W2s[ind](hidden)
+                self.W1s[ind](features) + self.W2s[ind](hidden)
             )
 
             # score shape == (batch_size, 64, 1, 1)
@@ -132,14 +131,14 @@ class BahdanauAttention(tf.keras.Model):
             # attention_weights shape == (batch_size, 64, 1, 1)
             # features shape == (batch_size, 64, 1, embedding_dim)
             # context_vector shape ==  (batch_size, 64, 1, embedding_dim)
-            context_vector = attention_weights * features_with_extra_axis
+            context_vector = attention_weights * features
             # context_vector shape after sum == (batch_size, 1, embedding_dim) -> 1, 2048
             context_vector = tf.reduce_sum(context_vector, axis=1)
 
             all_context_vectors.append(context_vector)
             all_attention_weights.append(attention_weights)
 
-        context_vector = tf.stack(all_context_vectors, axis=2)
+        context_vector = tf.stack(all_context_vectors, axis=1)
         attention_weights = tf.stack(all_attention_weights, axis=2)
 
         return context_vector, attention_weights
@@ -187,13 +186,12 @@ def build_xplainable_model(config):
     attention_weights = Lambda(lambda x: x, name="attention_weights")(attention_weights)
 
     ## PREDICTION HEAD
-    out = Flatten()(context_vector)
-    out = Dense(256, activation="relu")(out)
-    out = BatchNormalization(name="head_bn1")(out)
-    out = Dropout(0.2)(out)
-    out = Dense(32, activation="relu")(out)
-    out = BatchNormalization(name="head_bn2")(out)
-    out = Dense(2, activation="linear", name="unnormalized_output")(out)
+    out = Bidirectional(LSTM(128, return_sequences=True, dropout=0.35))(context_vector)
+    out = BatchNormalization(name="lstm_bn1")(out)
+    out = Bidirectional(LSTM(128, return_sequences=False, dropout=0.35))(out)
+    out = BatchNormalization(name="lstm_bn2")(out)
+    out = Dense(64, activation="relu", name="dense_out_1")(out)
+    out = Dense(2, activation="linear", name="dense_out_2")(out)
 
     p, d = Lambda(lambda x: tf.split(x, num_or_size_splits=2, axis=1), name="outputs")(
         out

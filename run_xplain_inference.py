@@ -12,26 +12,28 @@ from src.attention_model import build_xplainable_model
 from src.data import generate_test_data
 
 os.environ["TF_CUDNN_DETERMINISTIC"] = "1"
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 
-def plot_attention(image, attention_plot, n_features, IND):
+def plot_attention(image, attention_plot, n_features, IND, config):
     temp_image = np.array(cv2.imread(image))
 
     fig = plt.figure(figsize=(20, 20))
 
     for i in range(n_features):
-        temp_att = np.resize(attention_plot[:, i], (8, 8))
+        temp_att = np.resize(attention_plot[:, i], (16, 16))
         grid_size = 6
         ax = fig.add_subplot(grid_size, grid_size, i + 1)
-        ax.set_title(i)
+        ax.set_title(config.feature_cols[i])
         img = ax.imshow(temp_image)
         ax.imshow(temp_att, cmap="gray", alpha=0.6, extent=img.get_extent())
         ax.set_xticks([])
         ax.set_yticks([])
 
     plt.tight_layout()
-    plt.savefig(f"attn_{IND}.png", dpi=100)
+    output_path = os.path.join(config.raw_output_base, f"attn_{IND}.png")
+    plt.savefig(output_path, dpi=100)
+    plt.close(fig)
 
 
 def run_inference(chkpt_dir: str, save_model: bool = False):
@@ -74,9 +76,9 @@ def run_inference(chkpt_dir: str, save_model: bool = False):
     df.to_csv("pred_xplain.csv", index=False)
 
     for IND in range(len(test_images)):
-        att = attentions[IND].reshape(64, 41)
+        att = attentions[IND].reshape(256, 41)
         image = os.path.join(config.preprocessed_image_base_path, test_images[IND])
-        plot_attention(image, att, 36, IND)
+        plot_attention(image, att, 36, IND, config)
 
 
 if __name__ == "__main__":

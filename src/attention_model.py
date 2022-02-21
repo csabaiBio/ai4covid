@@ -96,11 +96,11 @@ class CNN_Encoder(tf.keras.Model):
 
 
 class BahdanauAttention(tf.keras.Model):
-    def __init__(self, units):
+    def __init__(self, units, n_hidden):
         super(BahdanauAttention, self).__init__()
-        self.W1 = tf.keras.layers.Dense(units)
-        self.W2 = tf.keras.layers.Dense(units)
-        self.V = tf.keras.layers.Dense(1)
+        self.W1s = [tf.keras.layers.Dense(units) for _ in range(n_hidden)]
+        self.W2s = [tf.keras.layers.Dense(units) for _ in range(n_hidden)]
+        self.Vs = [tf.keras.layers.Dense(1) for _ in range(n_hidden)]
 
     def call(self, features, hidden):
         # features(CNN_encoder output) shape == (batch_size, 64, embedding_dim)
@@ -108,27 +108,39 @@ class BahdanauAttention(tf.keras.Model):
         # hidden shape == (batch_size, hidden_size)
         # hidden_with_time_axis shape == (batch_size, 1, n_hidden, hidden_size)
         hidden_with_time_axis = tf.expand_dims(hidden, 1)
+        hidden_with_time_axis = tf.unstack(hidden_with_time_axis, axis=2)
         # features shape == (batch_size, 64, 1, embedding_dim)
         features_with_extra_axis = tf.expand_dims(features, 2)
 
-        # attention_hidden_layer shape == (batch_size, 64, n_hidden, units)
-        attention_hidden_layer = tf.nn.tanh(
-            self.W1(features_with_extra_axis) + self.W2(hidden_with_time_axis)
-        )
+        all_context_vectors = []
+        all_attention_weights = []
 
-        # score shape == (batch_size, 64, n_hidden, 1)
-        # This gives you an unnormalized score for each image feature.
-        score = self.V(attention_hidden_layer)
+        for ind, hidden in enumerate(hidden_with_time_axis):
+            # attention_hidden_layer shape == (batch_size, 64, 1, units)
+            hidden = tf.expand_dims(hidden, 1)
+            attention_hidden_layer = tf.nn.tanh(
+                self.W1s[ind](features_with_extra_axis) + self.W2s[ind](hidden)
+            )
 
-        # attention_weights shape == (batch_size, 64, n_hidden, 1)
-        attention_weights = tf.nn.softmax(score, axis=1)
+            # score shape == (batch_size, 64, 1, 1)
+            # This gives you an unnormalized score for each image feature.
+            score = self.Vs[ind](attention_hidden_layer)
 
-        # attention_weights shape == (batch_size, 64, n_hidden, 1)
-        # features shape == (batch_size, 64, 1, embedding_dim)
-        # context_vector shape ==  (batch_size, 64, n_hidden, embedding_dim)
-        context_vector = attention_weights * features_with_extra_axis
-        # context_vector shape after sum == (batch_size, n_hidden, embedding_dim) -> 41, 2048
-        context_vector = tf.reduce_sum(context_vector, axis=1)
+            # attention_weights shape == (batch_size, 64, 1, 1)
+            attention_weights = tf.nn.softmax(score, axis=1)
+
+            # attention_weights shape == (batch_size, 64, 1, 1)
+            # features shape == (batch_size, 64, 1, embedding_dim)
+            # context_vector shape ==  (batch_size, 64, 1, embedding_dim)
+            context_vector = attention_weights * features_with_extra_axis
+            # context_vector shape after sum == (batch_size, 1, embedding_dim) -> 1, 2048
+            context_vector = tf.reduce_sum(context_vector, axis=1)
+
+            all_context_vectors.append(context_vector)
+            all_attention_weights.append(attention_weights)
+
+        context_vector = tf.stack(all_context_vectors, axis=2)
+        attention_weights = tf.stack(all_attention_weights, axis=2)
 
         return context_vector, attention_weights
 
@@ -160,7 +172,7 @@ def build_xplainable_model(config):
     meta_encoder = TransformerEncoderBlock(
         config.transformer_encode_dim, config.transformer_heads
     )
-    attention = BahdanauAttention(config.bahdanau_dim)
+    attention = BahdanauAttention(config.bahdanau_dim, config.n_feature_cols)
 
     encoded_img = cnn_model(input_raw)
     encoded_img = cnn_encoder(encoded_img)

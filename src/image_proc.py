@@ -160,19 +160,19 @@ class ImageProcessor:
         if self.is_inverted(image):
             image = np.max(image) - image
         image = self.normalize_image(image)
-        with tf.device("/cpu:0"):
+        with tf.device("/GPU:0"):
             aligned_image = self.nets["alignment_model"].predict(
                 np.expand_dims(image, [0, -1])
             )
-        with tf.device("/cpu:0"):
+        with tf.device("/GPU:0"):
             segmented_image = self.nets["segmentation_model"].predict(aligned_image)
             segmented_image_flipped = self.nets["segmentation_model"].predict(
                 np.expand_dims(np.fliplr(aligned_image[0, :, :, 0]), [0, -1])
             )
-        with tf.device("/cpu:0"):
+        with tf.device("/GPU:0"):
             score = np.argmax( self.nets["score_model"].predict(
                 np.expand_dims(image, [0, -1])), axis=-1 ).flatten()
-        with tf.device("/cpu:0"):
+        with tf.device("/GPU:0"):
             score_original = np.argmax( self.nets["score_model_original"].predict(
                 np.expand_dims(image, [0, -1])), axis=-1 ).flatten()
         

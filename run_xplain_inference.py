@@ -7,6 +7,7 @@ import numpy as np
 import omegaconf
 import pandas as pd
 import tensorflow as tf
+from tqdm import tqdm
 
 from src.attention_model import build_xplainable_model
 from src.data import generate_test_data
@@ -22,8 +23,7 @@ def plot_attention(image, attention_plot, n_features, IND, config):
 
     for i in range(n_features):
         temp_att = np.resize(attention_plot[:, i], (16, 16))
-        grid_size = 6
-        ax = fig.add_subplot(grid_size, grid_size, i + 1)
+        ax = fig.add_subplot(4, 5, i + 1)
         ax.set_title(config.feature_cols[i])
         img = ax.imshow(temp_image)
         ax.imshow(temp_att, cmap="gray", alpha=0.6, extent=img.get_extent())
@@ -75,10 +75,10 @@ def run_inference(chkpt_dir: str, save_model: bool = False):
 
     df.to_csv("pred_xplain.csv", index=False)
 
-    for IND in range(len(test_images)):
-        att = attentions[IND].reshape(256, 41)
+    for IND in tqdm(range(len(test_images))):
+        att = attentions[IND].reshape(256, 20)
         image = os.path.join(config.preprocessed_image_base_path, test_images[IND])
-        plot_attention(image, att, 36, IND, config)
+        plot_attention(image, att, 20, IND, config)
 
 
 if __name__ == "__main__":

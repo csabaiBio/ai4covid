@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 
 import cv2
-from matplotlib import image
 import numpy as np
 import tensorflow as tf
 
@@ -127,14 +126,14 @@ class ImageProcessor:
             (aligned_image * 255.0).astype("uint8"),
         )
         score = images["score"]
-        np.savetxt( 
-            os.path.join(self.config.output_base_path, "score", f"{name}.txt" ),
-            score.astype("uint8")
+        np.savetxt(
+            os.path.join(self.config.output_base_path, "score", f"{name}.txt"),
+            score.astype("uint8"),
         )
         score_original = images["score_original"]
-        np.savetxt( 
-            os.path.join(self.config.output_base_path, "score_original", f"{name}.txt" ),
-            score_original.astype("uint8")
+        np.savetxt(
+            os.path.join(self.config.output_base_path, "score_original", f"{name}.txt"),
+            score_original.astype("uint8"),
         )
 
     def process_image(self, path):
@@ -153,11 +152,18 @@ class ImageProcessor:
                 np.expand_dims(np.fliplr(aligned_image[0, :, :, 0]), [0, -1])
             )
         with tf.device("/cpu:0"):
-            score = np.argmax( self.nets["score_model"].predict(
-                np.expand_dims(image, [0, -1])), axis=-1 ).flatten()
+            score = np.argmax(
+                self.nets["score_model"].predict(np.expand_dims(image, [0, -1])),
+                axis=-1,
+            ).flatten()
+
         with tf.device("/cpu:0"):
-            score_original = np.argmax( self.nets["score_model_original"].predict(
-                np.expand_dims(image, [0, -1])), axis=-1 ).flatten()
+            score_original = np.argmax(
+                self.nets["score_model_original"].predict(
+                    np.expand_dims(image, [0, -1])
+                ),
+                axis=-1,
+            ).flatten()
 
         output = {
             "aligned_image": aligned_image[0],

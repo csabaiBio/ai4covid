@@ -6,6 +6,7 @@ from tensorflow.keras.layers import (
     BatchNormalization,
     Bidirectional,
     Concatenate,
+    Conv2D,
     Dense,
     Dropout,
     Flatten,
@@ -48,7 +49,7 @@ class BinaryEndpointLayer(layers.Layer):
 
 def get_cnn_model(config):
     base_model = tf.keras.applications.efficientnet.EfficientNetB0(
-        input_shape=(config.img_height, config.img_width, 2),
+        input_shape=(config.img_size, config.img_size, 2),
         include_top=False,
         weights=None,
     )
@@ -89,11 +90,10 @@ class TransformerEncoderBlock(layers.Layer):
 class CNN_Encoder(tf.keras.Model):
     def __init__(self, embedding_dim):
         super(CNN_Encoder, self).__init__()
-        self.fc = tf.keras.layers.Dense(embedding_dim)
+        self.fc = Conv2D(embedding_dim, (1, 1), padding="same", activation="relu")
 
     def call(self, x):
         x = self.fc(x)
-        x = tf.nn.relu(x)
         return x
 
 
@@ -146,22 +146,22 @@ class BahdanauAttention(tf.keras.Model):
 
 def build_xplainable_model(config):
     input_img = Input(
-        shape=(config.img_width, config.img_height, 1),
+        shape=(config.img_size, config.img_size, 1),
         name="image",
         dtype="float32",
     )
     input_mask = Input(
-        shape=(config.img_width, config.img_height, 1),
+        shape=(config.img_size, config.img_size, 1),
         name="mask",
         dtype="float32",
     )
 
     input_raw = Concatenate(axis=-1, name="concat_inputs")([input_img, input_mask])
 
-    input_meta = Input(shape=(config.n_feature_cols), name="meta", dtype="float32")
-    meta = layers.Reshape(target_shape=(config.n_feature_cols, 1), name="meta_reshape")(
-        input_meta
-    )
+    input_meta = Input(shape=(len(config.feature_cols)), name="meta", dtype="float32")
+    meta = layers.Reshape(
+        target_shape=(len(config.feature_cols), 1), name="meta_reshape"
+    )(input_meta)
 
     death = Input(name="death", shape=(2), dtype="int32")
     prognosis = Input(name="prognosis", shape=(2), dtype="int32")
@@ -171,7 +171,7 @@ def build_xplainable_model(config):
     meta_encoder = TransformerEncoderBlock(
         config.transformer_encode_dim, config.transformer_heads
     )
-    attention = BahdanauAttention(config.bahdanau_dim, config.n_feature_cols)
+    attention = BahdanauAttention(config.bahdanau_dim, len(config.feature_cols))
 
     encoded_img = cnn_model(input_raw)
     encoded_img = cnn_encoder(encoded_img)
@@ -213,7 +213,7 @@ def build_xplainable_model(config):
     lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
         config.learning_rate,
         decay_steps=3 * config.steps_per_epoch,
-        decay_rate=0.96,
+        decay_rate=0.15,
         staircase=False,
     )
 

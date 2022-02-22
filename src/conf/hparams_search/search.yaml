@@ -1,7 +1,7 @@
 method: bayes
 metric:
   goal: maximize
-  name: val_binary_accuracy
+  name: val_balanced_accuracy
 parameters:
   batch_size:
     distribution: int_uniform
@@ -11,14 +11,10 @@ parameters:
     distribution: int_uniform
     max: 50
     min: 25
-  img_height:
+  img_size:
     distribution: int_uniform
     max: 500
-    min: 240
-  img_width:
-    distribution: int_uniform
-    max: 500
-    min: 350
+    min: 250
   learning_rate:
     distribution: uniform
     max: 0.02

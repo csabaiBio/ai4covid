@@ -4,6 +4,7 @@ from functools import partial
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from sklearn.metrics import adjusted_mutual_info_score
 import tensorflow as tf
 from albumentations import (
     Compose,
@@ -15,8 +16,8 @@ from albumentations import (
 )
 
 
-def aug_fn(image, mask, augment, width, height):
-    data = {"image": image, "mask": mask}
+def aug_fn(image, mask, fourier, augment, width, height):
+    data = {"image": image, "mask": mask, "fourier": fourier}
     if augment:
         transforms = Compose(
             [
@@ -45,25 +46,28 @@ def aug_fn(image, mask, augment, width, height):
         )
 
     aug_data = transforms(**data)
-    return aug_data["image"], aug_data["mask"]
+    return aug_data["image"], aug_data["mask"], aug_data["fourier"]
 
 
 def augment_data(sample, augment, img_width, img_height):
     image = sample["image"]
     mask = sample["mask"]
+    fourier = sample["fourier"]
     aug_data = tf.numpy_function(
         func=aug_fn,
-        inp=[image, mask, augment, img_width, img_height],
+        inp=[image, mask, fourier, augment, img_width, img_height],
         Tout=[tf.float32, tf.float32],
     )
     sample["image"] = aug_data[0]
     sample["mask"] = aug_data[1]
+    sample["fourier"] = aug_data[2]
     return sample
 
 
 def set_shapes(sample, config):
     img = sample["image"]
     mask = sample["mask"]
+    fourier = sample["fourier"]
     meta = sample["meta"]
     prognosis = sample["prognosis"]
     death = sample["death"]
@@ -71,6 +75,7 @@ def set_shapes(sample, config):
 
     img.set_shape((config.img_width, config.img_height, 1))
     mask.set_shape((config.img_width, config.img_height, 1))
+    fourier.set_shape((config.img_width, config.img_height, 1))
     meta.set_shape((config.n_feature_cols))
     prognosis.set_shape((2))
     death.set_shape((2))
@@ -79,6 +84,7 @@ def set_shapes(sample, config):
     return {
         "image": img,
         "mask": mask,
+        "fourier": fourier,
         "meta": meta,
         "brixia": brixia,
         "prognosis": prognosis,
@@ -113,9 +119,23 @@ def process_sample(img_file_name, meta, brixia, prognosis, death, config, test=F
     mask = tf.io.decode_png(mask, channels=1)
     mask = tf.image.convert_image_dtype(mask, tf.float32)
 
+    fourier_path = tf.strings.join(
+        [
+            config.segmentation_base_path.replace(
+                "train", "train" if test else "train"
+            ),
+            img_file_name,
+        ],
+        separator=os.path.sep,
+    )
+    fourier = tf.io.read_file(fourier_path)
+    fourier = tf.io.decode_png(fourier, channels=1)
+    fourier = tf.image.convert_image_dtype(fourier, tf.float32)
+
     return {
         "image": img,
         "mask": mask,
+        "fourier": fourier,
         "brixia": brixia,
         "prognosis": prognosis,
         "death": death,
@@ -257,22 +277,26 @@ def generate_data(config, fold=None):
     )
 
     if config.visualize:
-        _, ax = plt.subplots(2, 6, figsize=(10, 5))
+        _, ax = plt.subplots(3, 6, figsize=(15, 5))
         for batch in train_dataset.take(1):
             images = batch["image"]
             masks = batch["mask"]
+            fouriers = batch["fourier"]
             deaths = batch["death"]
             progs = batch["prognosis"]
 
             for i in range(min(6, config.batch_size)):
                 img = (images[i] * 255.0).numpy().astype("uint8")
                 mask = (masks[i] * 255.0).numpy().astype("uint8")
+                fourier = (fouriers[i] * 255.0).numpy().astype("uint8")
                 ax[0, i].imshow(img, cmap="gray")
                 ax[1, i].imshow(mask, cmap="gray")
+                ax[2, i].imshow(fourier, cmap="gray")
                 ax[0, i].set_title("Death: %d" % np.argmax(deaths.numpy()[i]))
                 ax[1, i].set_title("Prognosis: %d" % np.argmax(progs.numpy()[i]))
                 ax[0, i].axis("off")
                 ax[1, i].axis("off")
+                ax[2, i].axis("off")
 
         plt.savefig(f"{config.raw_output_base}/batch_sample.png", dpi=75)
         plt.close()
@@ -328,6 +352,7 @@ if __name__ == "__main__":
         for sample in datasets["train_dataset"].take(2):
             print(sample["image"].numpy().shape)
             print(sample["mask"].numpy().shape)
+            print(sample["fourier"].numpy().shape)
             print(sample["death"].numpy().shape)
             print(sample["prognosis"].numpy().shape)
             print(sample["meta"].numpy().shape)

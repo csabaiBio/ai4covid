@@ -71,19 +71,12 @@ def build_model(config):
         dtype="float32",
     )
     input_mask = Input(
-        shape=(config.img_size, config.img_size, 1),
+        shape=(config.img_size, config.img_size, 2),
         name="mask",
         dtype="float32",
     )
-    fourier_image = Input(
-        shape=(config.img_width, config.img_height, 1),
-        name="fourier",
-        dtype="float32",
-    )
 
-    input_raw = Concatenate(axis=-1, name="concat_inputs")(
-        [input_img, input_mask, fourier_image]
-    )
+    input_raw = Concatenate(axis=-1, name="concat_inputs")([input_img, input_mask])
 
     input_meta = Input(shape=(len(config.feature_cols)), name="meta", dtype="float32")
 
@@ -98,7 +91,7 @@ def build_model(config):
     backbone = tf.keras.applications.efficientnet.EfficientNetB0(
         include_top=False,
         weights=None,
-        input_shape=(config.img_width, config.img_height, 3),
+        input_shape=(config.img_size, config.img_size, 3),
         pooling="avg",
     )
     backbone.trainable = True

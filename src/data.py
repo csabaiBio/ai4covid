@@ -70,9 +70,9 @@ def set_shapes(sample, config):
     death = sample["death"]
     brixia = sample["brixia"]
 
-    img.set_shape((config.img_width, config.img_height, 1))
-    mask.set_shape((config.img_width, config.img_height, 2))
-    meta.set_shape((config.n_feature_cols))
+    img.set_shape((config.img_size, config.img_size, 1))
+    mask.set_shape((config.img_size, config.img_size, 2))
+    meta.set_shape((len(config.feature_cols)))
     prognosis.set_shape((2))
     death.set_shape((2))
     brixia.set_shape((6))

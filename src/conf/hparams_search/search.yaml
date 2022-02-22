@@ -3,6 +3,9 @@ metric:
   goal: maximize
   name: val_balanced_accuracy
 parameters:
+  backbone:
+    distribution: categorical
+    values: ["EfficientNetB0", "EfficientNetB1", "ResNet50", "VGG16", "VGG19", "InceptionV3"]
   batch_size:
     distribution: int_uniform
     max: 16
@@ -14,7 +17,7 @@ parameters:
   img_size:
     distribution: int_uniform
     max: 500
-    min: 250
+    min: 240
   learning_rate:
     distribution: uniform
     max: 0.02
@@ -27,7 +30,9 @@ parameters:
     distribution: uniform
     max: 2.0
     min: 0.01
-
+  last_dense_size:
+    distribution: categorical
+    values: [32, 64]
 
 program: run_hyperopt.py
 

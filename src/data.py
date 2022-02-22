@@ -13,6 +13,7 @@ from albumentations import (
     Resize,
     Rotate,
 )
+from sklearn.metrics import adjusted_mutual_info_score
 
 
 def aug_fn(image, mask, augment, width, height):
@@ -21,7 +22,7 @@ def aug_fn(image, mask, augment, width, height):
         transforms = Compose(
             [
                 RandomCrop(
-                    int(width - 0.15 * width), int(height - 0.15 * height), p=0.5
+                    int(height - 0.15 * height), int(width - 0.15 * width), p=0.5
                 ),
                 RandomBrightnessContrast(p=0.2),
                 Rotate(limit=10),
@@ -48,12 +49,12 @@ def aug_fn(image, mask, augment, width, height):
     return aug_data["image"], aug_data["mask"]
 
 
-def augment_data(sample, augment, img_width, img_height):
+def augment_data(sample, augment, img_size):
     image = sample["image"]
     mask = sample["mask"]
     aug_data = tf.numpy_function(
         func=aug_fn,
-        inp=[image, mask, augment, img_width, img_height],
+        inp=[image, mask, augment, img_size, img_size],
         Tout=[tf.float32, tf.float32],
     )
     sample["image"] = aug_data[0]
@@ -69,9 +70,9 @@ def set_shapes(sample, config):
     death = sample["death"]
     brixia = sample["brixia"]
 
-    img.set_shape((config.img_width, config.img_height, 1))
-    mask.set_shape((config.img_width, config.img_height, 1))
-    meta.set_shape((config.n_feature_cols))
+    img.set_shape((config.img_size, config.img_size, 1))
+    mask.set_shape((config.img_size, config.img_size, 2))
+    meta.set_shape((len(config.feature_cols)))
     prognosis.set_shape((2))
     death.set_shape((2))
     brixia.set_shape((6))
@@ -113,6 +114,19 @@ def process_sample(img_file_name, meta, brixia, prognosis, death, config, test=F
     mask = tf.io.decode_png(mask, channels=1)
     mask = tf.image.convert_image_dtype(mask, tf.float32)
 
+    fourier_path = tf.strings.join(
+        [
+            config.fourier_base_path.replace("train", "train" if test else "train"),
+            img_file_name,
+        ],
+        separator=os.path.sep,
+    )
+    fourier = tf.io.read_file(fourier_path)
+    fourier = tf.io.decode_png(fourier, channels=1)
+    fourier = tf.image.convert_image_dtype(fourier, tf.float32)
+
+    mask = tf.concat([mask, fourier], axis=-1)
+
     return {
         "image": img,
         "mask": mask,
@@ -123,7 +137,7 @@ def process_sample(img_file_name, meta, brixia, prognosis, death, config, test=F
     }
 
 
-def get_dataset(table_path, brixia_score_base_path, test=False):
+def get_dataset(table_path, brixia_score_base_path, config, test=False):
     df = pd.read_csv(table_path)
 
     death = df.pop("Death").to_numpy().flatten().astype(int)
@@ -143,7 +157,7 @@ def get_dataset(table_path, brixia_score_base_path, test=False):
     prognosis = tf.keras.utils.to_categorical(prognosis, num_classes=2)
     death = tf.keras.utils.to_categorical(death, num_classes=2)
 
-    meta = df.to_numpy()
+    meta = df[config.feature_cols].to_numpy()
 
     brixia = np.array(
         [
@@ -172,7 +186,9 @@ def generate_data(config, fold=None):
             train_prognosis,
             train_death,
         ) = get_dataset(
-            config.cv_train_table + f"cv{fold + 1}.csv", config.brixia_score_base_path
+            config.cv_train_table + f"cv{fold + 1}.csv",
+            config.brixia_score_base_path,
+            config,
         )
         (
             valid_image,
@@ -181,7 +197,9 @@ def generate_data(config, fold=None):
             valid_prognosis,
             valid_death,
         ) = get_dataset(
-            config.cv_valid_table + f"cv{fold + 1}.csv", config.brixia_score_base_path
+            config.cv_valid_table + f"cv{fold + 1}.csv",
+            config.brixia_score_base_path,
+            config,
         )
     else:
         (
@@ -197,7 +215,7 @@ def generate_data(config, fold=None):
             valid_brixia,
             valid_prognosis,
             valid_death,
-        ) = get_dataset(config.valid_table, config.brixia_score_base_path)
+        ) = get_dataset(config.valid_table, config.brixia_score_base_path, config)
 
     print("Number of train images found: ", len(train_image))
     print("Number of validation images found: ", len(valid_image))
@@ -213,12 +231,7 @@ def generate_data(config, fold=None):
             num_parallel_calls=tf.data.experimental.AUTOTUNE,
         )
         .map(
-            partial(
-                augment_data,
-                augment=config.augment,
-                img_width=config.img_width,
-                img_height=config.img_height,
-            ),
+            partial(augment_data, augment=config.augment, img_size=config.img_size),
             num_parallel_calls=tf.data.experimental.AUTOTUNE,
         )
         .map(
@@ -231,6 +244,8 @@ def generate_data(config, fold=None):
         .prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     )
 
+    encode_single_sample_wrapped = partial(process_sample, config=config, test=True)
+
     validation_dataset = tf.data.Dataset.from_tensor_slices(
         (valid_image, valid_meta, valid_brixia, valid_prognosis, valid_death)
     )
@@ -240,12 +255,7 @@ def generate_data(config, fold=None):
             num_parallel_calls=tf.data.experimental.AUTOTUNE,
         )
         .map(
-            partial(
-                augment_data,
-                augment=False,
-                img_width=config.img_width,
-                img_height=config.img_height,
-            ),
+            partial(augment_data, augment=False, img_size=config.img_size),
             num_parallel_calls=tf.data.experimental.AUTOTUNE,
         )
         .map(
@@ -257,7 +267,7 @@ def generate_data(config, fold=None):
     )
 
     if config.visualize:
-        _, ax = plt.subplots(2, 6, figsize=(10, 5))
+        _, ax = plt.subplots(3, 6, figsize=(15, 5))
         for batch in train_dataset.take(1):
             images = batch["image"]
             masks = batch["mask"]
@@ -267,12 +277,16 @@ def generate_data(config, fold=None):
             for i in range(min(6, config.batch_size)):
                 img = (images[i] * 255.0).numpy().astype("uint8")
                 mask = (masks[i] * 255.0).numpy().astype("uint8")
+                fourier = mask[:, :, 1]
+                mask = mask[:, :, 0]
                 ax[0, i].imshow(img, cmap="gray")
                 ax[1, i].imshow(mask, cmap="gray")
+                ax[2, i].imshow(fourier, cmap="gray")
                 ax[0, i].set_title("Death: %d" % np.argmax(deaths.numpy()[i]))
                 ax[1, i].set_title("Prognosis: %d" % np.argmax(progs.numpy()[i]))
                 ax[0, i].axis("off")
                 ax[1, i].axis("off")
+                ax[2, i].axis("off")
 
         plt.savefig(f"{config.raw_output_base}/batch_sample.png", dpi=75)
         plt.close()
@@ -284,6 +298,7 @@ def generate_test_data(config):
     test_image, test_meta, test_brixia, test_prognosis, test_death = get_dataset(
         config.test_table,
         brixia_score_base_path=config.brixia_score_base_path,
+        config=config,
         test=True,
     )
 
@@ -300,12 +315,7 @@ def generate_test_data(config):
             num_parallel_calls=tf.data.experimental.AUTOTUNE,
         )
         .map(
-            partial(
-                augment_data,
-                augment=False,
-                img_width=config.img_width,
-                img_height=config.img_height,
-            ),
+            partial(augment_data, augment=False, img_size=config.img_size),
             num_parallel_calls=tf.data.experimental.AUTOTUNE,
         )
         .map(
@@ -322,7 +332,7 @@ def generate_test_data(config):
 if __name__ == "__main__":
     import hydra
 
-    @hydra.main(config_path="conf", config_name="train_pop_avg")
+    @hydra.main(config_path="conf", config_name="train_pop_sampled")
     def run(config):
         datasets = generate_data(config, 0)
         for sample in datasets["train_dataset"].take(2):

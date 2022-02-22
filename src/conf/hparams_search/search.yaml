@@ -1,7 +1,7 @@
 method: bayes
 metric:
   goal: maximize
-  name: val_binary_accuracy
+  name: val_balanced_accuracy
 parameters:
   backbone:
     distribution: categorical

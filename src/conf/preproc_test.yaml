@@ -1,0 +1,14 @@
+img_size: 512
+base_data_path: /mnt/ncshare/ai4covid_hackathon/
+image_base_path: /mnt/ncshare/ai4covid_hackathon/raw_data/TestSet
+weights_base_path: /mnt/ncshare/ai4covid_hackathon/weights/
+output_base_path: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/test
+train_table_path: /mnt/ncshare/ai4covid_hackathon/raw_data/trainClinData.xls
+
+table_path: /mnt/ncshare/ai4covid_hackathon/raw_data/testClinData.xls
+
+corner_ratio: 0.2
+center_ratio: 0.05
+use_bottom: False
+
+save_images: True

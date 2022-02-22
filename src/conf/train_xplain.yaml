@@ -1,0 +1,34 @@
+img_height: 256
+img_width: 256
+
+segmentation_base_path: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/train/segmented
+preprocessed_image_base_path: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/train/aligned
+brixia_score_base_path: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/train/score_original
+
+train_table: /home/qbeer/GitHub/ai4covid/data/preprocessed_data/tables/pop_avg/trainClinDataImputedPopAvg.csv
+valid_table: /home/qbeer/GitHub/ai4covid/data/preprocessed_data/tables/pop_avg/trainClinDataImputedPopAvg.csv
+test_table: /home/qbeer/GitHub/ai4covid/data/preprocessed_data/tables/pop_avg/testClinDataImputedPopAvg.csv
+
+raw_output_base: /mnt/ncshare/ai4covid_hackathon/raw_output
+
+project: ai4covid-xplain
+
+n_feature_cols: 41
+cnn_encode_dim: 1024
+transformer_encode_dim: 256
+transformer_heads: 16
+bahdanau_dim: 256
+
+visualize: True
+augment: True
+
+batch_size: 4
+epochs: 50
+learning_rate: 0.0001
+steps_per_epoch: 500
+death_rate: 0.25
+
+cross_val_train: True
+n_folds: 5
+cv_train_table: /home/qbeer/GitHub/ai4covid/data/preprocessed_data/tables/pop_avg/trainClinDataImputedPopAvg_
+cv_valid_table: /home/qbeer/GitHub/ai4covid/data/preprocessed_data/tables/pop_avg/validClinDataImputedPopAvg_

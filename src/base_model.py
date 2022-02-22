@@ -1,4 +1,5 @@
 import tensorflow as tf
+from pydoc import locate
 from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.keras.layers import (
@@ -13,6 +14,16 @@ from tensorflow.keras.layers import (
 )
 
 tf.random.set_seed(137)
+
+
+backbone_dict = {
+    "EfficientNetB0": tf.keras.applications.efficientnet.EfficientNetB0,
+    "EfficientNetB1": tf.keras.applications.efficientnet.EfficientNetB1,
+    "ResNet50": tf.keras.applications.resnet.ResNet50,
+    "VGG16": tf.keras.applications.vgg16.VGG16,
+    "VGG19": tf.keras.applications.vgg19.VGG19,
+    "InceptionV3": tf.keras.applications.inception_v3
+}
 
 
 class BinaryEndpointLayer(layers.Layer):
@@ -62,12 +73,12 @@ class BinaryEndpointLayer(layers.Layer):
 
 def build_model(config):
     input_img = Input(
-        shape=(config.img_width, config.img_height, 1),
+        shape=(config.img_size, config.img_size, 1),
         name="image",
         dtype="float32",
     )
     input_mask = Input(
-        shape=(config.img_width, config.img_height, 1),
+        shape=(config.img_size, config.img_size, 1),
         name="mask",
         dtype="float32",
     )
@@ -78,12 +89,13 @@ def build_model(config):
 
     death = Input(name="death", shape=(2), dtype="int32")
     prognosis = Input(name="prognosis", shape=(2), dtype="int32")
-
+      
+    
     # IMAGING HEAD
-    backbone = tf.keras.applications.efficientnet.EfficientNetB0(
+    backbone = backbone_dict[config.backbone](
         include_top=False,
         weights=None,
-        input_shape=(config.img_width, config.img_height, 2),
+        input_shape=(config.img_size, config.img_size, 2),
         pooling="avg",
     )
     backbone.trainable = True
@@ -102,7 +114,7 @@ def build_model(config):
     out = Dense(256, activation="relu")(combined)
     out = BatchNormalization(name="head_bn1")(out)
     out = Dropout(0.2)(out)
-    out = Dense(32, activation="relu")(out)
+    out = Dense(config.last_dense_size, activation="relu")(out)
     out = BatchNormalization(name="head_bn2")(out)
     out = Dense(4, activation="linear", name="unnormalized_output")(out)
 

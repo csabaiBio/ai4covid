@@ -12,6 +12,8 @@ from tensorflow.keras.layers import (
     Softmax,
 )
 
+from src.balanced_accuracy import BACC
+
 tf.random.set_seed(137)
 
 
@@ -20,6 +22,7 @@ class BinaryEndpointLayer(layers.Layer):
         super().__init__(name=name)
         if name == "prognosis_binary_loss":
             self.binary_metrics = [
+                BACC(name="balanced_accuracy"),
                 tf.keras.metrics.BinaryAccuracy(),
                 tf.keras.metrics.BinaryCrossentropy(),
                 tf.keras.metrics.Precision(),
@@ -46,6 +49,7 @@ class BinaryEndpointLayer(layers.Layer):
             self.rate = 1.0
         else:
             self.binary_metrics = [
+                BACC(name="death_balanced_accuracy"),
                 tf.keras.metrics.BinaryAccuracy(name="death_binary_accuracy"),
                 tf.keras.metrics.BinaryCrossentropy(name="death_binary_crossentropy"),
                 tf.keras.metrics.Precision(name="death_precision"),
@@ -62,12 +66,12 @@ class BinaryEndpointLayer(layers.Layer):
 
 def build_model(config):
     input_img = Input(
-        shape=(config.img_width, config.img_height, 1),
+        shape=(config.img_size, config.img_size, 1),
         name="image",
         dtype="float32",
     )
     input_mask = Input(
-        shape=(config.img_width, config.img_height, 1),
+        shape=(config.img_size, config.img_size, 1),
         name="mask",
         dtype="float32",
     )
@@ -77,9 +81,15 @@ def build_model(config):
         dtype="float32",
     )
 
-    input_raw = Concatenate(axis=-1, name="concat_inputs")([input_img, input_mask, fourier_image])
+    input_raw = Concatenate(axis=-1, name="concat_inputs")(
+        [input_img, input_mask, fourier_image]
+    )
 
-    input_meta = Input(shape=(config.n_feature_cols), name="meta", dtype="float32")
+    input_meta = Input(shape=(len(config.feature_cols)), name="meta", dtype="float32")
+
+    input_brixia = Input(shape=(6), name="brixia", dtype="float32")
+
+    meta = Concatenate(axis=-1, name="meta_and_brixia")([input_meta, input_brixia])
 
     death = Input(name="death", shape=(2), dtype="int32")
     prognosis = Input(name="prognosis", shape=(2), dtype="int32")
@@ -95,7 +105,7 @@ def build_model(config):
     image_out = backbone(input_raw)
 
     ## META HEAD
-    meta = Dense(64, activation="relu")(input_meta)
+    meta = Dense(64, activation="relu")(meta)
     meta = BatchNormalization(name="meta_bn1")(meta)
     meta = Dense(128, activation="relu")(meta)
     meta = BatchNormalization(name="meta_bn2")(meta)
@@ -123,7 +133,7 @@ def build_model(config):
     death_out = BinaryEndpointLayer(name="death_binary_loss", config=config)(death, d)
 
     model = keras.models.Model(
-        inputs=[input_img, input_mask, input_meta, prognosis, death],
+        inputs=[input_img, input_mask, input_meta, input_brixia, prognosis, death],
         outputs=[prognosis_out, death_out],
         name="model_v1",
     )
@@ -131,7 +141,7 @@ def build_model(config):
     lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
         config.learning_rate,
         decay_steps=3 * config.steps_per_epoch,
-        decay_rate=0.96,
+        decay_rate=0.15,
         staircase=False,
     )
 

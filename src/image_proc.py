@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 
 import cv2
-from matplotlib import image
 import numpy as np
 import tensorflow as tf
 
@@ -100,7 +99,7 @@ class ImageProcessor:
         img = cv2.medianBlur(img, 3)
         img = np.array(img) / 255.0
         return img
-    
+
     def normalize_fourier_image(self, img):
         img = (img - np.min(img)) / (np.max(img) - np.min(img))  # min-max scaling
         img = (img * 255).astype("uint8")
@@ -144,14 +143,14 @@ class ImageProcessor:
         )
 
         score = images["score"]
-        np.savetxt( 
-            os.path.join(self.config.output_base_path, "score", f"{name}.txt" ),
-            score.astype("uint8")
+        np.savetxt(
+            os.path.join(self.config.output_base_path, "score", f"{name}.txt"),
+            score.astype("uint8"),
         )
         score_original = images["score_original"]
-        np.savetxt( 
-            os.path.join(self.config.output_base_path, "score_original", f"{name}.txt" ),
-            score_original.astype("uint8")
+        np.savetxt(
+            os.path.join(self.config.output_base_path, "score_original", f"{name}.txt"),
+            score_original.astype("uint8"),
         )
 
     def process_image(self, path):
@@ -170,12 +169,18 @@ class ImageProcessor:
                 np.expand_dims(np.fliplr(aligned_image[0, :, :, 0]), [0, -1])
             )
         with tf.device("/GPU:0"):
-            score = np.argmax( self.nets["score_model"].predict(
-                np.expand_dims(image, [0, -1])), axis=-1 ).flatten()
+            score = np.argmax(
+                self.nets["score_model"].predict(np.expand_dims(image, [0, -1])),
+                axis=-1,
+            ).flatten()
         with tf.device("/GPU:0"):
-            score_original = np.argmax( self.nets["score_model_original"].predict(
-                np.expand_dims(image, [0, -1])), axis=-1 ).flatten()
-        
+            score_original = np.argmax(
+                self.nets["score_model_original"].predict(
+                    np.expand_dims(image, [0, -1])
+                ),
+                axis=-1,
+            ).flatten()
+
         f = np.fft.fft2(image)
         f_s = np.fft.fftshift(f)
         image_f = np.log(abs(f_s))
@@ -191,7 +196,7 @@ class ImageProcessor:
                     -1,
                 )
             ),
-            "fourier_image" : image_f,
+            "fourier_image": image_f,
             "score": score,
             "score_original": score_original,
         }

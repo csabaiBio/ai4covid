@@ -2,8 +2,11 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.keras.layers import (
+    LSTM,
     BatchNormalization,
+    Bidirectional,
     Concatenate,
+    Conv2D,
     Dense,
     Dropout,
     Flatten,
@@ -46,7 +49,7 @@ class BinaryEndpointLayer(layers.Layer):
 
 def get_cnn_model(config):
     base_model = tf.keras.applications.efficientnet.EfficientNetB0(
-        input_shape=(config.img_height, config.img_width, 2),
+        input_shape=(config.img_size, config.img_size, 2),
         include_top=False,
         weights=None,
     )
@@ -87,70 +90,78 @@ class TransformerEncoderBlock(layers.Layer):
 class CNN_Encoder(tf.keras.Model):
     def __init__(self, embedding_dim):
         super(CNN_Encoder, self).__init__()
-        self.fc = tf.keras.layers.Dense(embedding_dim)
+        self.fc = Conv2D(embedding_dim, (1, 1), padding="same", activation="relu")
 
     def call(self, x):
         x = self.fc(x)
-        x = tf.nn.relu(x)
         return x
 
 
 class BahdanauAttention(tf.keras.Model):
-    def __init__(self, units):
+    def __init__(self, units, n_hidden):
         super(BahdanauAttention, self).__init__()
-        self.W1 = tf.keras.layers.Dense(units)
-        self.W2 = tf.keras.layers.Dense(units)
-        self.V = tf.keras.layers.Dense(1)
+        self.W1s = [tf.keras.layers.Dense(units) for _ in range(n_hidden)]
+        self.W2s = [tf.keras.layers.Dense(units) for _ in range(n_hidden)]
+        self.Vs = [tf.keras.layers.Dense(1) for _ in range(n_hidden)]
 
     def call(self, features, hidden):
         # features(CNN_encoder output) shape == (batch_size, 64, embedding_dim)
 
         # hidden shape == (batch_size, hidden_size)
-        # hidden_with_time_axis shape == (batch_size, 1, n_hidden, hidden_size)
-        hidden_with_time_axis = tf.expand_dims(hidden, 1)
-        # features shape == (batch_size, 64, 1, embedding_dim)
-        features_with_extra_axis = tf.expand_dims(features, 2)
+        # hidden_with_time_axis shape == (batch_size, n_hidden, hidden_size)
+        hidden_with_time_axis = tf.unstack(hidden, axis=1)
 
-        # attention_hidden_layer shape == (batch_size, 64, n_hidden, units)
-        attention_hidden_layer = tf.nn.tanh(
-            self.W1(features_with_extra_axis) + self.W2(hidden_with_time_axis)
-        )
+        all_context_vectors = []
+        all_attention_weights = []
 
-        # score shape == (batch_size, 64, n_hidden, 1)
-        # This gives you an unnormalized score for each image feature.
-        score = self.V(attention_hidden_layer)
+        for ind, hidden in enumerate(hidden_with_time_axis):
+            hidden = tf.expand_dims(hidden, 1)
+            # attention_hidden_layer shape == (batch_size, 64, 1, units)
+            attention_hidden_layer = tf.nn.tanh(
+                self.W1s[ind](features) + self.W2s[ind](hidden)
+            )
 
-        # attention_weights shape == (batch_size, 64, n_hidden, 1)
-        attention_weights = tf.nn.softmax(score, axis=1)
+            # score shape == (batch_size, 64, 1, 1)
+            # This gives you an unnormalized score for each image feature.
+            score = self.Vs[ind](attention_hidden_layer)
 
-        # attention_weights shape == (batch_size, 64, n_hidden, 1)
-        # features shape == (batch_size, 64, 1, embedding_dim)
-        # context_vector shape ==  (batch_size, 64, n_hidden, embedding_dim)
-        context_vector = attention_weights * features_with_extra_axis
-        # context_vector shape after sum == (batch_size, n_hidden, embedding_dim) -> 41, 2048
-        context_vector = tf.reduce_sum(context_vector, axis=1)
+            # attention_weights shape == (batch_size, 64, 1, 1)
+            attention_weights = tf.nn.softmax(score, axis=1)
+
+            # attention_weights shape == (batch_size, 64, 1, 1)
+            # features shape == (batch_size, 64, 1, embedding_dim)
+            # context_vector shape ==  (batch_size, 64, 1, embedding_dim)
+            context_vector = attention_weights * features
+            # context_vector shape after sum == (batch_size, 1, embedding_dim) -> 1, 2048
+            context_vector = tf.reduce_sum(context_vector, axis=1)
+
+            all_context_vectors.append(context_vector)
+            all_attention_weights.append(attention_weights)
+
+        context_vector = tf.stack(all_context_vectors, axis=1)
+        attention_weights = tf.stack(all_attention_weights, axis=2)
 
         return context_vector, attention_weights
 
 
 def build_xplainable_model(config):
     input_img = Input(
-        shape=(config.img_width, config.img_height, 1),
+        shape=(config.img_size, config.img_size, 1),
         name="image",
         dtype="float32",
     )
     input_mask = Input(
-        shape=(config.img_width, config.img_height, 1),
+        shape=(config.img_size, config.img_size, 1),
         name="mask",
         dtype="float32",
     )
 
     input_raw = Concatenate(axis=-1, name="concat_inputs")([input_img, input_mask])
 
-    input_meta = Input(shape=(config.n_feature_cols), name="meta", dtype="float32")
-    meta = layers.Reshape(target_shape=(config.n_feature_cols, 1), name="meta_reshape")(
-        input_meta
-    )
+    input_meta = Input(shape=(len(config.feature_cols)), name="meta", dtype="float32")
+    meta = layers.Reshape(
+        target_shape=(len(config.feature_cols), 1), name="meta_reshape"
+    )(input_meta)
 
     death = Input(name="death", shape=(2), dtype="int32")
     prognosis = Input(name="prognosis", shape=(2), dtype="int32")
@@ -160,7 +171,7 @@ def build_xplainable_model(config):
     meta_encoder = TransformerEncoderBlock(
         config.transformer_encode_dim, config.transformer_heads
     )
-    attention = BahdanauAttention(config.bahdanau_dim)
+    attention = BahdanauAttention(config.bahdanau_dim, len(config.feature_cols))
 
     encoded_img = cnn_model(input_raw)
     encoded_img = cnn_encoder(encoded_img)
@@ -175,13 +186,12 @@ def build_xplainable_model(config):
     attention_weights = Lambda(lambda x: x, name="attention_weights")(attention_weights)
 
     ## PREDICTION HEAD
-    out = Flatten()(context_vector)
-    out = Dense(256, activation="relu")(out)
-    out = BatchNormalization(name="head_bn1")(out)
-    out = Dropout(0.2)(out)
-    out = Dense(32, activation="relu")(out)
-    out = BatchNormalization(name="head_bn2")(out)
-    out = Dense(2, activation="linear", name="unnormalized_output")(out)
+    out = Bidirectional(LSTM(128, return_sequences=True, dropout=0.35))(context_vector)
+    out = BatchNormalization(name="lstm_bn1")(out)
+    out = Bidirectional(LSTM(128, return_sequences=False, dropout=0.35))(out)
+    out = BatchNormalization(name="lstm_bn2")(out)
+    out = Dense(64, activation="relu", name="dense_out_1")(out)
+    out = Dense(2, activation="linear", name="dense_out_2")(out)
 
     p, d = Lambda(lambda x: tf.split(x, num_or_size_splits=2, axis=1), name="outputs")(
         out
@@ -203,7 +213,7 @@ def build_xplainable_model(config):
     lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
         config.learning_rate,
         decay_steps=3 * config.steps_per_epoch,
-        decay_rate=0.96,
+        decay_rate=0.15,
         staircase=False,
     )
 

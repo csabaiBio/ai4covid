@@ -1,5 +1,4 @@
-img_height: 256
-img_width: 256
+img_size: 512
 
 segmentation_base_path: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/train/segmented
 preprocessed_image_base_path: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/train/aligned
@@ -14,11 +13,12 @@ raw_output_base: /mnt/ncshare/ai4covid_hackathon/raw_output
 
 project: ai4covid-xplain
 
-n_feature_cols: 41
-cnn_encode_dim: 1024
-transformer_encode_dim: 256
-transformer_heads: 16
+cnn_encode_dim: 256
+transformer_encode_dim: 200
+transformer_heads: 15
 bahdanau_dim: 256
+
+feature_cols: ['Age', 'Sex', 'Temp_C', 'Cough', 'WBC', 'CRP', 'Fibrinogen', 'Glucose', 'LDH', 'D_dimer', 'Ox_percentage', 'PaO2', 'SaO2', 'pH', 'HeartFailure', 'HighBloodPressure', 'Diabetes', 'Cancer', 'RespiratoryFailure', 'Obesity']
 
 visualize: True
 augment: True

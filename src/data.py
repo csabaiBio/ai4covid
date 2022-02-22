@@ -49,12 +49,12 @@ def aug_fn(image, mask, augment, width, height):
     return aug_data["image"], aug_data["mask"]
 
 
-def augment_data(sample, augment, img_width, img_height):
+def augment_data(sample, augment, img_size):
     image = sample["image"]
     mask = sample["mask"]
     aug_data = tf.numpy_function(
         func=aug_fn,
-        inp=[image, mask, augment, img_width, img_height],
+        inp=[image, mask, augment, img_size, img_size],
         Tout=[tf.float32, tf.float32],
     )
     sample["image"] = aug_data[0]
@@ -137,7 +137,7 @@ def process_sample(img_file_name, meta, brixia, prognosis, death, config, test=F
     }
 
 
-def get_dataset(table_path, brixia_score_base_path, test=False):
+def get_dataset(table_path, brixia_score_base_path, config, test=False):
     df = pd.read_csv(table_path)
 
     death = df.pop("Death").to_numpy().flatten().astype(int)
@@ -157,7 +157,7 @@ def get_dataset(table_path, brixia_score_base_path, test=False):
     prognosis = tf.keras.utils.to_categorical(prognosis, num_classes=2)
     death = tf.keras.utils.to_categorical(death, num_classes=2)
 
-    meta = df.to_numpy()
+    meta = df[config.feature_cols].to_numpy()
 
     brixia = np.array(
         [
@@ -186,7 +186,9 @@ def generate_data(config, fold=None):
             train_prognosis,
             train_death,
         ) = get_dataset(
-            config.cv_train_table + f"cv{fold + 1}.csv", config.brixia_score_base_path
+            config.cv_train_table + f"cv{fold + 1}.csv",
+            config.brixia_score_base_path,
+            config,
         )
         (
             valid_image,
@@ -195,7 +197,9 @@ def generate_data(config, fold=None):
             valid_prognosis,
             valid_death,
         ) = get_dataset(
-            config.cv_valid_table + f"cv{fold + 1}.csv", config.brixia_score_base_path
+            config.cv_valid_table + f"cv{fold + 1}.csv",
+            config.brixia_score_base_path,
+            config,
         )
     else:
         (
@@ -211,7 +215,7 @@ def generate_data(config, fold=None):
             valid_brixia,
             valid_prognosis,
             valid_death,
-        ) = get_dataset(config.valid_table, config.brixia_score_base_path)
+        ) = get_dataset(config.valid_table, config.brixia_score_base_path, config)
 
     print("Number of train images found: ", len(train_image))
     print("Number of validation images found: ", len(valid_image))
@@ -227,12 +231,7 @@ def generate_data(config, fold=None):
             num_parallel_calls=tf.data.experimental.AUTOTUNE,
         )
         .map(
-            partial(
-                augment_data,
-                augment=config.augment,
-                img_width=config.img_width,
-                img_height=config.img_height,
-            ),
+            partial(augment_data, augment=config.augment, img_size=config.img_size),
             num_parallel_calls=tf.data.experimental.AUTOTUNE,
         )
         .map(
@@ -245,6 +244,8 @@ def generate_data(config, fold=None):
         .prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     )
 
+    encode_single_sample_wrapped = partial(process_sample, config=config, test=True)
+
     validation_dataset = tf.data.Dataset.from_tensor_slices(
         (valid_image, valid_meta, valid_brixia, valid_prognosis, valid_death)
     )
@@ -254,12 +255,7 @@ def generate_data(config, fold=None):
             num_parallel_calls=tf.data.experimental.AUTOTUNE,
         )
         .map(
-            partial(
-                augment_data,
-                augment=False,
-                img_width=config.img_width,
-                img_height=config.img_height,
-            ),
+            partial(augment_data, augment=False, img_size=config.img_size),
             num_parallel_calls=tf.data.experimental.AUTOTUNE,
         )
         .map(
@@ -302,6 +298,7 @@ def generate_test_data(config):
     test_image, test_meta, test_brixia, test_prognosis, test_death = get_dataset(
         config.test_table,
         brixia_score_base_path=config.brixia_score_base_path,
+        config=config,
         test=True,
     )
 
@@ -318,12 +315,7 @@ def generate_test_data(config):
             num_parallel_calls=tf.data.experimental.AUTOTUNE,
         )
         .map(
-            partial(
-                augment_data,
-                augment=False,
-                img_width=config.img_width,
-                img_height=config.img_height,
-            ),
+            partial(augment_data, augment=False, img_size=config.img_size),
             num_parallel_calls=tf.data.experimental.AUTOTUNE,
         )
         .map(
@@ -340,7 +332,7 @@ def generate_test_data(config):
 if __name__ == "__main__":
     import hydra
 
-    @hydra.main(config_path="conf", config_name="train_pop_avg")
+    @hydra.main(config_path="conf", config_name="train_pop_sampled")
     def run(config):
         datasets = generate_data(config, 0)
         for sample in datasets["train_dataset"].take(2):

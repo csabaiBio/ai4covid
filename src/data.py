@@ -13,6 +13,7 @@ from albumentations import (
     Resize,
     Rotate,
 )
+from sklearn.metrics import adjusted_mutual_info_score
 
 
 def aug_fn(image, mask, augment, width, height):
@@ -21,7 +22,7 @@ def aug_fn(image, mask, augment, width, height):
         transforms = Compose(
             [
                 RandomCrop(
-                    int(width - 0.15 * width), int(height - 0.15 * height), p=0.5
+                    int(height - 0.15 * height), int(width - 0.15 * width), p=0.5
                 ),
                 RandomBrightnessContrast(p=0.2),
                 Rotate(limit=10),
@@ -69,9 +70,9 @@ def set_shapes(sample, config):
     death = sample["death"]
     brixia = sample["brixia"]
 
-    img.set_shape((config.img_size, config.img_size, 1))
-    mask.set_shape((config.img_size, config.img_size, 1))
-    meta.set_shape((len(config.feature_cols)))
+    img.set_shape((config.img_width, config.img_height, 1))
+    mask.set_shape((config.img_width, config.img_height, 2))
+    meta.set_shape((config.n_feature_cols))
     prognosis.set_shape((2))
     death.set_shape((2))
     brixia.set_shape((6))
@@ -112,6 +113,19 @@ def process_sample(img_file_name, meta, brixia, prognosis, death, config, test=F
     mask = tf.io.read_file(mask_path)
     mask = tf.io.decode_png(mask, channels=1)
     mask = tf.image.convert_image_dtype(mask, tf.float32)
+
+    fourier_path = tf.strings.join(
+        [
+            config.fourier_base_path.replace("train", "train" if test else "train"),
+            img_file_name,
+        ],
+        separator=os.path.sep,
+    )
+    fourier = tf.io.read_file(fourier_path)
+    fourier = tf.io.decode_png(fourier, channels=1)
+    fourier = tf.image.convert_image_dtype(fourier, tf.float32)
+
+    mask = tf.concat([mask, fourier], axis=-1)
 
     return {
         "image": img,
@@ -253,7 +267,7 @@ def generate_data(config, fold=None):
     )
 
     if config.visualize:
-        _, ax = plt.subplots(2, 6, figsize=(10, 5))
+        _, ax = plt.subplots(3, 6, figsize=(15, 5))
         for batch in train_dataset.take(1):
             images = batch["image"]
             masks = batch["mask"]
@@ -263,12 +277,16 @@ def generate_data(config, fold=None):
             for i in range(min(6, config.batch_size)):
                 img = (images[i] * 255.0).numpy().astype("uint8")
                 mask = (masks[i] * 255.0).numpy().astype("uint8")
+                fourier = mask[:, :, 1]
+                mask = mask[:, :, 0]
                 ax[0, i].imshow(img, cmap="gray")
                 ax[1, i].imshow(mask, cmap="gray")
+                ax[2, i].imshow(fourier, cmap="gray")
                 ax[0, i].set_title("Death: %d" % np.argmax(deaths.numpy()[i]))
                 ax[1, i].set_title("Prognosis: %d" % np.argmax(progs.numpy()[i]))
                 ax[0, i].axis("off")
                 ax[1, i].axis("off")
+                ax[2, i].axis("off")
 
         plt.savefig(f"{config.raw_output_base}/batch_sample.png", dpi=75)
         plt.close()

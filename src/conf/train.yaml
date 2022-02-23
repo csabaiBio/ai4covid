@@ -43,3 +43,10 @@ datasets:
     cv_train_table: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/tables/age_avg/trainClinDataImputedAgeAvg_
     cv_valid_table: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/tables/age_avg/validClinDataImputedAgeAvg_
     feature_cols: ['Age', 'Sex', 'PositivityAtAdmission', 'Temp_C', 'DaysFever', 'Cough', 'DifficultyInBreathing', 'WBC', 'RBC', 'CRP', 'Fibrinogen', 'Glucose', 'PCT', 'LDH', 'INR', 'D_dimer', 'Ox_percentage', 'PaO2', 'SaO2', 'PaCO2', 'pH', 'CardiovascularDisease', 'IschemicHeartDisease', 'AtrialFibrillation', 'HeartFailure', 'Ictus', 'HighBloodPressure', 'Diabetes', 'Dementia', 'BPCO', 'Cancer', 'ChronicKidneyDisease', 'RespiratoryFailure', 'Obesity', 'Position', 'Hospital_A', 'Hospital_B', 'Hospital_C', 'Hospital_D', 'Hospital_E', 'Hospital_F']
+  hospital_average:
+    train_table: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/tables/hosp_avg/trainClinDataImputedHospAvg.csv
+    valid_table: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/tables/hosp_avg/trainClinDataImputedHospAvg.csv
+    test_table: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/tables/hosp_avg/testClinDataImputedHospAvg.csv
+    cv_train_table: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/tables/hosp_avg/trainClinDataImputedHospAvg_
+    cv_valid_table: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/tables/hosp_avg/validClinDataImputedHospAvg_
+    feature_cols: ['Age', 'Sex', 'PositivityAtAdmission', 'Temp_C', 'DaysFever', 'Cough', 'DifficultyInBreathing', 'WBC', 'RBC', 'CRP', 'Fibrinogen', 'Glucose', 'PCT', 'LDH', 'INR', 'D_dimer', 'Ox_percentage', 'PaO2', 'SaO2', 'PaCO2', 'pH', 'CardiovascularDisease', 'IschemicHeartDisease', 'AtrialFibrillation', 'HeartFailure', 'Ictus', 'HighBloodPressure', 'Diabetes', 'Dementia', 'BPCO', 'Cancer', 'ChronicKidneyDisease', 'RespiratoryFailure', 'Obesity', 'Position', 'Hospital_A', 'Hospital_B', 'Hospital_C', 'Hospital_D', 'Hospital_E', 'Hospital_F']

@@ -51,3 +51,10 @@ datasets:
     cv_train_table: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/tables/age_avg/trainClinDataImputedAgeAvg_
     cv_valid_table: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/tables/age_avg/validClinDataImputedAgeAvg_
     feature_cols: ['Age', 'Sex', 'Temp_C', 'Cough', 'WBC', 'CRP', 'Fibrinogen', 'Glucose', 'LDH', 'D_dimer', 'Ox_percentage', 'PaO2', 'SaO2', 'pH', 'HeartFailure', 'HighBloodPressure', 'Diabetes', 'Cancer', 'RespiratoryFailure', 'Obesity']
+  hospital_average:
+    train_table: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/tables/hosp_avg/trainClinDataImputedHospAvg.csv
+    valid_table: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/tables/hosp_avg/trainClinDataImputedHospAvg.csv
+    test_table: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/tables/hosp_avg/testClinDataImputedHospAvg.csv
+    cv_train_table: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/tables/hosp_avg/trainClinDataImputedHospAvg_
+    cv_valid_table: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/tables/hosp_avg/validClinDataImputedHospAvg_
+    feature_cols: ['Age', 'Sex', 'Temp_C', 'Cough', 'WBC', 'CRP', 'Fibrinogen', 'Glucose', 'LDH', 'D_dimer', 'Ox_percentage', 'PaO2', 'SaO2', 'pH', 'HeartFailure', 'HighBloodPressure', 'Diabetes', 'Cancer', 'RespiratoryFailure', 'Obesity']

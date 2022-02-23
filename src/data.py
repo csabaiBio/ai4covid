@@ -65,13 +65,15 @@ def augment_data(sample, augment, img_size):
 def set_shapes(sample, config):
     img = sample["image"]
     mask = sample["mask"]
+    fourier = sample["fourier"]
     meta = sample["meta"]
     prognosis = sample["prognosis"]
     death = sample["death"]
     brixia = sample["brixia"]
 
     img.set_shape((config.img_size, config.img_size, 1))
-    mask.set_shape((config.img_size, config.img_size, 2))
+    mask.set_shape((config.img_size, config.img_size, 1))
+    fourier.set_shape((config.img_size, config.img_size, 1))
     meta.set_shape((len(config.feature_cols)))
     prognosis.set_shape((2))
     death.set_shape((2))
@@ -80,6 +82,7 @@ def set_shapes(sample, config):
     return {
         "image": img,
         "mask": mask,
+        "fourier": fourier,
         "meta": meta,
         "brixia": brixia,
         "prognosis": prognosis,
@@ -124,12 +127,14 @@ def process_sample(img_file_name, meta, brixia, prognosis, death, config, test=F
     fourier = tf.io.read_file(fourier_path)
     fourier = tf.io.decode_png(fourier, channels=1)
     fourier = tf.image.convert_image_dtype(fourier, tf.float32)
-
-    mask = tf.concat([mask, fourier], axis=-1)
+    fourier = tf.image.resize(
+        fourier, [config.img_size, config.img_size], method="nearest"
+    )
 
     return {
         "image": img,
         "mask": mask,
+        "fourier": fourier,
         "brixia": brixia,
         "prognosis": prognosis,
         "death": death,
@@ -271,14 +276,14 @@ def generate_data(config, fold=None):
         for batch in train_dataset.take(1):
             images = batch["image"]
             masks = batch["mask"]
+            fouriers = batch["fourier"]
             deaths = batch["death"]
             progs = batch["prognosis"]
 
             for i in range(min(6, config.batch_size)):
                 img = (images[i] * 255.0).numpy().astype("uint8")
                 mask = (masks[i] * 255.0).numpy().astype("uint8")
-                fourier = mask[:, :, 1]
-                mask = mask[:, :, 0]
+                fourier = (fouriers[i] * 255.0).numpy().astype("uint8")
                 ax[0, i].imshow(img, cmap="gray")
                 ax[1, i].imshow(mask, cmap="gray")
                 ax[2, i].imshow(fourier, cmap="gray")

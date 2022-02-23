@@ -6,9 +6,11 @@ from tensorflow.keras import layers
 from tensorflow.keras.layers import (
     BatchNormalization,
     Concatenate,
+    Conv2D,
     Dense,
     Dropout,
     Flatten,
+    GlobalAveragePooling2D,
     Input,
     Lambda,
     Softmax,
@@ -83,8 +85,13 @@ def build_model(config):
         dtype="float32",
     )
     input_mask = Input(
-        shape=(config.img_size, config.img_size, 2),
+        shape=(config.img_size, config.img_size, 1),
         name="mask",
+        dtype="float32",
+    )
+    input_fourier = Input(
+        shape=(config.img_size, config.img_size, 1),
+        name="fourier",
         dtype="float32",
     )
 
@@ -103,11 +110,24 @@ def build_model(config):
     backbone = backbone_dict[config.backbone](
         include_top=False,
         weights=None,
-        input_shape=(config.img_size, config.img_size, 3),
+        input_shape=(config.img_size, config.img_size, 2),
         pooling="avg",
     )
     backbone.trainable = True
     image_out = backbone(input_raw)
+
+    ## FOURIER HEAD
+    fourier = Conv2D(16, (7, 7), strides=(2, 2), activation="relu")(input_fourier)
+    fourier = BatchNormalization(name="fourier_bn1")(fourier)
+    fourier = Conv2D(32, (3, 3), strides=(2, 2), activation="relu")(fourier)
+    fourier = BatchNormalization(name="fourier_bn2")(fourier)
+    fourier = Conv2D(64, (3, 3), strides=(2, 2), activation="relu")(fourier)
+    fourier = BatchNormalization(name="fourier_bn3")(fourier)
+    fourier = Conv2D(128, (3, 3), strides=(2, 2), activation="relu")(fourier)
+    fourier = BatchNormalization(name="fourier_bn4")(fourier)
+    fourier = Conv2D(256, (3, 3), strides=(2, 2), activation="relu")(fourier)
+    fourier = BatchNormalization(name="fourier_bn5")(fourier)
+    fourier_out = GlobalAveragePooling2D(name="fourier_avg_pool")(fourier)
 
     ## META HEAD
     meta = Dense(64, activation="relu")(meta)
@@ -118,7 +138,9 @@ def build_model(config):
     meta_out = BatchNormalization(name="meta_bn3")(meta)
 
     ## COMBINED HEAD
-    combined = Concatenate(axis=-1, name="concat_heads")([image_out, meta_out])
+    combined = Concatenate(axis=-1, name="concat_heads")(
+        [image_out, fourier_out, meta_out]
+    )
     out = Dense(256, activation="relu")(combined)
     out = BatchNormalization(name="head_bn1")(out)
     out = Dropout(0.2)(out)
@@ -138,7 +160,15 @@ def build_model(config):
     death_out = BinaryEndpointLayer(name="death_binary_loss", config=config)(death, d)
 
     model = keras.models.Model(
-        inputs=[input_img, input_mask, input_meta, input_brixia, prognosis, death],
+        inputs=[
+            input_img,
+            input_mask,
+            input_fourier,
+            input_meta,
+            input_brixia,
+            prognosis,
+            death,
+        ],
         outputs=[prognosis_out, death_out],
         name="model_v1",
     )

@@ -21,7 +21,7 @@ n_folds: 5
 
 dataset_identifier: age_average
 
-dataset:
+datasets:
   population_average:
     train_table: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/tables/pop_avg/trainClinDataImputedPopAvg.csv
     valid_table: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/tables/pop_avg/trainClinDataImputedPopAvg.csv

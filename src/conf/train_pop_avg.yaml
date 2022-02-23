@@ -13,6 +13,9 @@ raw_output_base: /mnt/ncshare/ai4covid_hackathon/raw_output
 
 project: ai4covid
 
+backbone: EfficientNetB0
+last_dense_size: 32
+
 feature_cols: ['Age', 'Sex', 'PositivityAtAdmission', 'Temp_C', 'DaysFever', 'Cough', 'DifficultyInBreathing', 'WBC', 'RBC', 'CRP', 'Fibrinogen', 'Glucose', 'PCT', 'LDH', 'INR', 'D_dimer', 'Ox_percentage', 'PaO2', 'SaO2', 'PaCO2', 'pH', 'CardiovascularDisease', 'IschemicHeartDisease', 'AtrialFibrillation', 'HeartFailure', 'Ictus', 'HighBloodPressure', 'Diabetes', 'Dementia', 'BPCO', 'Cancer', 'ChronicKidneyDisease', 'RespiratoryFailure', 'Obesity', 'Position', 'Hospital_A', 'Hospital_B', 'Hospital_C', 'Hospital_D', 'Hospital_E', 'Hospital_F']
 
 visualize: True

@@ -72,7 +72,7 @@ class BACC(Metric):
 
         return result
 
-    def reset_states(self):
+    def reset_state(self):
         num_thresholds = len(to_list(self.thresholds))
         K.batch_set_value([(v, np.zeros((num_thresholds,))) for v in self.variables])
 

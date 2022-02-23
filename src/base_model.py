@@ -97,7 +97,8 @@ def build_model(config):
 
     input_raw = Concatenate(axis=-1, name="concat_inputs")([input_img, input_mask])
 
-    input_meta = Input(shape=(len(config.feature_cols)), name="meta", dtype="float32")
+    n_feature_cols = len(config.datasets[config.dataset_identifier].feature_cols)
+    input_meta = Input(shape=(n_feature_cols), name="meta", dtype="float32")
 
     input_brixia = Input(shape=(6), name="brixia", dtype="float32")
 

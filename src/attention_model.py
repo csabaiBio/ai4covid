@@ -15,6 +15,8 @@ from tensorflow.keras.layers import (
     Softmax,
 )
 
+from src.balanced_accuracy import BACC
+
 tf.random.set_seed(137)
 
 
@@ -23,6 +25,7 @@ class BinaryEndpointLayer(layers.Layer):
         super().__init__(name=name)
         if name == "prognosis_binary_loss":
             self.binary_metrics = [
+                BACC(name="balanced_accuracy"),
                 tf.keras.metrics.BinaryAccuracy(),
                 tf.keras.metrics.BinaryCrossentropy(),
             ]
@@ -30,6 +33,7 @@ class BinaryEndpointLayer(layers.Layer):
             self.pos_weight = tf.constant(1.0 / (568.0 / 538.0))
         else:
             self.binary_metrics = [
+                BACC(name="death_balanced_accuracy"),
                 tf.keras.metrics.BinaryAccuracy(name="death_binary_accuracy"),
                 tf.keras.metrics.BinaryCrossentropy(name="death_binary_crossentropy"),
             ]
@@ -47,8 +51,18 @@ class BinaryEndpointLayer(layers.Layer):
         return tf.nn.sigmoid(y_pred)
 
 
+backbone_dict = {
+    "EfficientNetB0": tf.keras.applications.efficientnet.EfficientNetB0,
+    "EfficientNetB1": tf.keras.applications.efficientnet.EfficientNetB1,
+    "ResNet50": tf.keras.applications.resnet.ResNet50,
+    "VGG16": tf.keras.applications.vgg16.VGG16,
+    "VGG19": tf.keras.applications.vgg19.VGG19,
+    "InceptionV3": tf.keras.applications.inception_v3.InceptionV3,
+}
+
+
 def get_cnn_model(config):
-    base_model = tf.keras.applications.efficientnet.EfficientNetB0(
+    base_model = backbone_dict[config.backbone](
         input_shape=(config.img_size, config.img_size, 2),
         include_top=False,
         weights=None,
@@ -158,10 +172,12 @@ def build_xplainable_model(config):
 
     input_raw = Concatenate(axis=-1, name="concat_inputs")([input_img, input_mask])
 
-    input_meta = Input(shape=(len(config.feature_cols)), name="meta", dtype="float32")
-    meta = layers.Reshape(
-        target_shape=(len(config.feature_cols), 1), name="meta_reshape"
-    )(input_meta)
+    n_feature_cols = len(config.datasets[config.dataset_identifier].feature_cols)
+
+    input_meta = Input(shape=(n_feature_cols), name="meta", dtype="float32")
+    meta = layers.Reshape(target_shape=(n_feature_cols, 1), name="meta_reshape")(
+        input_meta
+    )
 
     death = Input(name="death", shape=(2), dtype="int32")
     prognosis = Input(name="prognosis", shape=(2), dtype="int32")
@@ -171,7 +187,7 @@ def build_xplainable_model(config):
     meta_encoder = TransformerEncoderBlock(
         config.transformer_encode_dim, config.transformer_heads
     )
-    attention = BahdanauAttention(config.bahdanau_dim, len(config.feature_cols))
+    attention = BahdanauAttention(config.bahdanau_dim, n_feature_cols)
 
     encoded_img = cnn_model(input_raw)
     encoded_img = cnn_encoder(encoded_img)

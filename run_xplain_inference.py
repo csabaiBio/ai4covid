@@ -24,7 +24,7 @@ def plot_attention(image, attention_plot, n_features, IND, config):
     for i in range(n_features):
         temp_att = np.resize(attention_plot[:, i], (16, 16))
         ax = fig.add_subplot(4, 5, i + 1)
-        ax.set_title(config.feature_cols[i])
+        ax.set_title(config.dataset[config.dataset_identifier].feature_cols[i])
         img = ax.imshow(temp_image)
         ax.imshow(temp_att, cmap="gray", alpha=0.6, extent=img.get_extent())
         ax.set_xticks([])

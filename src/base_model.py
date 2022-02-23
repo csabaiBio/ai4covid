@@ -25,7 +25,7 @@ backbone_dict = {
     "ResNet50": tf.keras.applications.resnet.ResNet50,
     "VGG16": tf.keras.applications.vgg16.VGG16,
     "VGG19": tf.keras.applications.vgg19.VGG19,
-    "InceptionV3": tf.keras.applications.inception_v3,
+    "InceptionV3": tf.keras.applications.inception_v3.InceptionV3,
 }
 
 

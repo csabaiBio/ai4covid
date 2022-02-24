@@ -5,11 +5,11 @@ metric:
 parameters:
   backbone:
     distribution: categorical
-    values: ["EfficientNetB0", "EfficientNetB1", "ResNet50", "VGG16", "VGG19", "InceptionV3"]
+    values: ["EfficientNetB0", "EfficientNetB1", "ResNet50"]
   batch_size:
     distribution: int_uniform
-    max: 16
-    min: 8
+    max: 12
+    min: 6
   epochs:
     distribution: int_uniform
     max: 50
@@ -24,15 +24,12 @@ parameters:
     min: 1e-05
   steps_per_epoch:
     distribution: int_uniform
-    max: 450
+    max: 600
     min: 350
   death_rate:
     distribution: uniform
-    max: 2.0
+    max: 0.5
     min: 0.01
-  last_dense_size:
-    distribution: categorical
-    values: [32, 64]
 
 program: run_hyperopt.py
 
@@ -40,9 +37,3 @@ command:
 - ${interpreter}
 - ${program}
 - ${args_no_hyphens}
-
-early_terminate:
-  eta: 3
-  max_iter: 2
-  s: 2
-  type: hyperband

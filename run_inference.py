@@ -9,7 +9,6 @@ import tensorflow as tf
 from src.base_model import build_model
 from src.data import generate_test_data
 
-os.environ["TF_CUDNN_DETERMINISTIC"] = "1"
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 

@@ -5,7 +5,7 @@ metric:
 parameters:
   backbone:
     distribution: categorical
-    values: ["EfficientNetB0", "EfficientNetB1", "ResNet50", "VGG16", "VGG19", "InceptionV3"]
+    values: ["EfficientNetB0", "EfficientNetB1", "ResNet50", "VGG16", "VGG19"]
   batch_size:
     distribution: int_uniform
     max: 12
@@ -16,7 +16,7 @@ parameters:
     min: 50
   learning_rate:
     distribution: uniform
-    max: 0.001
+    max: 0.01
     min: 1e-05
   steps_per_epoch:
     distribution: int_uniform
@@ -46,9 +46,3 @@ command:
 - ${interpreter}
 - ${program}
 - ${args_no_hyphens}
-
-early_terminate:
-  eta: 3
-  max_iter: 2
-  s: 2
-  type: hyperband

@@ -12,8 +12,6 @@ from tqdm import tqdm
 from src.attention_model import build_xplainable_model
 from src.data import generate_test_data
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-
 
 def plot_attention(image, attention_plot, n_features, IND, config):
     temp_image = np.array(cv2.imread(image))
@@ -23,14 +21,15 @@ def plot_attention(image, attention_plot, n_features, IND, config):
     for i in range(n_features):
         temp_att = np.resize(attention_plot[:, i], (16, 16))
         ax = fig.add_subplot(4, 5, i + 1)
-        ax.set_title(config.dataset[config.dataset_identifier].feature_cols[i])
+        ax.set_title(config.datasets[config.dataset_identifier].feature_cols[i])
         img = ax.imshow(temp_image)
         ax.imshow(temp_att, cmap="gray", alpha=0.6, extent=img.get_extent())
         ax.set_xticks([])
         ax.set_yticks([])
 
     plt.tight_layout()
-    output_path = os.path.join(config.raw_output_base, f"attn_{IND}.png")
+    output_path = os.path.join(config.raw_output_base, "attentions", f"attn_{IND}.png")
+    Path(output_path).parents[0].mkdir(exist_ok=True, parents=True)
     plt.savefig(output_path, dpi=100)
     plt.close(fig)
 
@@ -76,7 +75,10 @@ def run_inference(chkpt_dir: str, save_model: bool = False):
 
     for IND in tqdm(range(len(test_images))):
         att = attentions[IND].reshape(256, 20)
-        image = os.path.join(config.preprocessed_image_base_path, test_images[IND])
+        image = os.path.join(
+            config.preprocessed_image_base_path.replace("train", "test"),
+            test_images[IND],
+        )
         plot_attention(image, att, 20, IND, config)
 
 

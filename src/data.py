@@ -304,8 +304,9 @@ def generate_data(config, fold=None):
 
 
 def generate_test_data(config):
+    dataset = config.datasets[config.dataset_identifier]
     test_image, test_meta, test_brixia, test_prognosis, test_death = get_dataset(
-        config.test_table,
+        dataset.test_table,
         brixia_score_base_path=config.brixia_score_base_path,
         config=config,
         split="test",

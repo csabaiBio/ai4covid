@@ -43,6 +43,9 @@ def run_experiment(config: DictConfig):
 
     omegaconf.OmegaConf.save(config=config, f=Path(chkpt_dir) / "config.yaml")
 
+    with open(os.path.join(chkpt_dir, "fold"), "w") as fp:
+        fp.write(str(fold))
+
     model.summary()
 
     cp_callback = tf.keras.callbacks.ModelCheckpoint(

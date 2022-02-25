@@ -10,18 +10,18 @@ project: ai4covid-xplain
 
 backbone: EfficientNetB0
 
-cnn_encode_dim: 256
-transformer_encode_dim: 200
+cnn_encode_dim: 474
+transformer_encode_dim: 112
 transformer_heads: 15
-bahdanau_dim: 256
+bahdanau_dim: 189
 
 visualize: True
 augment: True
 
-batch_size: 4
-epochs: 50
-learning_rate: 0.0001
-steps_per_epoch: 500
+batch_size: 7
+epochs: 77
+learning_rate: 0.004307437363754551
+steps_per_epoch: 587
 death_rate: 0.25
 
 cross_val_train: True

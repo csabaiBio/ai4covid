@@ -217,7 +217,7 @@ def generate_data(config, fold=None):
             train_brixia,
             train_prognosis,
             train_death,
-        ) = get_dataset(dataset.train_table, config.brixia_score_base_path)
+        ) = get_dataset(dataset.train_table, config.brixia_score_base_path, config)
         (
             valid_image,
             valid_meta,

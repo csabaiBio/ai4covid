@@ -6,14 +6,14 @@ fourier_base_path: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/train/fouri
 brixia_score_base_path: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/train/score_original
 raw_output_base: /mnt/ncshare/ai4covid_hackathon/raw_output
 
-img_size: 318
-backbone: EfficientNetB0
+img_size: 259
+backbone: EfficientNetB1
 last_dense_size: 64
-batch_size: 9
-epochs: 34
-learning_rate: 0.01557203541028156
-steps_per_epoch: 438
-death_rate: 0.26111899568411556
+batch_size: 7
+epochs: 36
+learning_rate: 0.0020146207110421084
+steps_per_epoch: 363
+death_rate: 0.13747478719961848
 visualize: True
 augment: True
 cross_val_train: True

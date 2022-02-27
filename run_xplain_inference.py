@@ -10,11 +10,14 @@ import tensorflow as tf
 from tqdm import tqdm
 
 from src.attention_model import build_xplainable_model
-from src.data import generate_test_data
+from src.data import generate_data, generate_test_data
 
 
 def plot_attention(image, attention_plot, n_features, IND, config):
-    temp_image = np.array(cv2.imread(image))
+    if type(image) == np.ndarray:
+        temp_image = image
+    else:
+        temp_image = np.array(cv2.imread(image))
 
     fig = plt.figure(figsize=(20, 20))
 
@@ -34,7 +37,7 @@ def plot_attention(image, attention_plot, n_features, IND, config):
     plt.close(fig)
 
 
-def run_inference(chkpt_dir: str, save_model: bool = False):
+def run_inference(chkpt_dir: str, save_model: bool, test: bool):
     config_path = Path(chkpt_dir) / "config.yaml"
     config = omegaconf.OmegaConf.load(config_path)
 
@@ -63,23 +66,74 @@ def run_inference(chkpt_dir: str, save_model: bool = False):
             os.path.join(chkpt_dir, "saved_model"),
         )
 
-    test_dataset, test_images = generate_test_data(config)
+    if test:
+        test_dataset, test_images = generate_test_data(config)
+    else:
+        config.cross_val_train = True
+        datasets = generate_data(
+            config, int(open(os.path.join(chkpt_dir, "fold"), "r").readline())
+        )
+        test_dataset, test_images = (
+            datasets["validation_dataset"],
+            datasets["validation_image"],
+        )
 
     test_predictions, attentions = prediction_model.predict(test_dataset)
 
-    df = pd.DataFrame(columns=["file", "prognosis"])
-    df["file"] = test_images
-    df["prognosis"] = ["MILD" if test < 0.5 else "SEVERE" for test in test_predictions]
+    mean_attention = np.mean(attentions, axis=0)
+    std_attention = np.std(attentions, axis=0)
 
-    df.to_csv("pred_xplain.csv", index=False)
+    plot_attention(
+        np.zeros(shape=(config.img_size, config.img_size)),
+        mean_attention,
+        20,
+        "mean" if test else "valid_mean",
+        config,
+    )
+
+    plot_attention(
+        np.zeros(shape=(config.img_size, config.img_size)),
+        std_attention,
+        20,
+        "std" if test else "valid_std",
+        config,
+    )
+
+    plot_attention(
+        np.zeros(shape=(config.img_size, config.img_size)),
+        np.log(mean_attention),
+        20,
+        "log_mean" if test else "valid_log_mean",
+        config,
+    )
+
+    plot_attention(
+        np.zeros(shape=(config.img_size, config.img_size)),
+        np.log(std_attention),
+        20,
+        "log_std" if test else "valid_log_std",
+        config,
+    )
 
     for IND in tqdm(range(len(test_images))):
         att = attentions[IND].reshape(256, 20)
         image = os.path.join(
-            config.preprocessed_image_base_path.replace("train", "test"),
+            config.preprocessed_image_base_path.replace(
+                "train", "test" if test else "train"
+            ),
             test_images[IND],
         )
         plot_attention(image, att, 20, IND, config)
+
+    test_predictions = prediction_model.predict(test_dataset)
+
+    test_predictions = np.argmax(test_predictions, axis=-1)
+
+    df = pd.DataFrame(columns=["file", "prognosis"])
+    df["file"] = test_images
+    df["prognosis"] = ["MILD" if test == 0 else "SEVERE" for test in test_predictions]
+
+    df.to_csv("pred_xplain.csv", index=False)
 
 
 if __name__ == "__main__":
@@ -92,5 +146,8 @@ if __name__ == "__main__":
         default="/mnt/ncshare/ai4covid_hackathon/raw_output/checkpoints/2022-02-17_21:31:41.429757",
     )
 
+    parser.add_argument("--save_model", action="store_true", default=False)
+    parser.add_argument("--test", action="store_true", default=False)
+
     args = parser.parse_args()
-    run_inference(args.chkpt_dir)
+    run_inference(args.chkpt_dir, args.save_model, args.test)

@@ -300,7 +300,11 @@ def generate_data(config, fold=None):
         plt.savefig(f"{config.raw_output_base}/batch_sample.png", dpi=75)
         plt.close()
 
-    return {"train_dataset": train_dataset, "validation_dataset": validation_dataset}
+    return {
+        "train_dataset": train_dataset,
+        "validation_dataset": validation_dataset,
+        "validation_image": valid_image,
+    }
 
 
 def generate_test_data(config):

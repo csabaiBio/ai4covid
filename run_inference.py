@@ -7,12 +7,12 @@ import pandas as pd
 import tensorflow as tf
 
 from src.base_model import build_model
-from src.data import generate_test_data
+from src.data import generate_data, generate_test_data
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 
-def run_inference(chkpt_dir: str, save_model: bool = False):
+def run_inference(chkpt_dir: str, save_model: bool, test: bool):
     config_path = Path(chkpt_dir) / "config.yaml"
     config = omegaconf.OmegaConf.load(config_path)
 
@@ -38,7 +38,17 @@ def run_inference(chkpt_dir: str, save_model: bool = False):
             os.path.join(chkpt_dir, "saved_model"),
         )
 
-    test_dataset, test_images = generate_test_data(config)
+    if test:
+        test_dataset, test_images = generate_test_data(config)
+    else:
+        config.cross_val_train = True
+        datasets = generate_data(
+            config, int(open(os.path.join(chkpt_dir, "fold"), "r").readline())
+        )
+        test_dataset, test_images = (
+            datasets["validation_dataset"],
+            datasets["validation_image"],
+        )
 
     test_predictions = prediction_model.predict(test_dataset)
 
@@ -61,5 +71,8 @@ if __name__ == "__main__":
         default="/mnt/ncshare/ai4covid_hackathon/raw_output/checkpoints/2022-02-17_21:31:41.429757",
     )
 
+    parser.add_argument("--save_model", action="store_true", default=False)
+    parser.add_argument("--test", action="store_true", default=False)
+
     args = parser.parse_args()
-    run_inference(args.chkpt_dir)
+    run_inference(args.chkpt_dir, args.save_model, args.test)

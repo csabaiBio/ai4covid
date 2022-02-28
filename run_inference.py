@@ -60,7 +60,7 @@ def run_inference(chkpt_dir: str, save_model: bool, test: bool):
     df["file"] = test_images
     df["prognosis"] = ["MILD" if test == 0 else "SEVERE" for test in test_predictions]
 
-    df.to_csv("pred.csv", index=False)
+    df.to_csv(os.path.join(chkpt_dir, "pred.csv"), index=False)
 
 
 if __name__ == "__main__":

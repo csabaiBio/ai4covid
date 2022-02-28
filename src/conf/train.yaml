@@ -17,6 +17,7 @@ death_rate: 0.13747478719961848
 visualize: True
 augment: True
 cross_val_train: True
+fold: -1
 n_folds: 5
 
 dataset_identifier: age_average

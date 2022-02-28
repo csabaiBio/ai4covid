@@ -27,7 +27,7 @@ tf.config.experimental.set_memory_growth(physical_devices[0], True)
 @hydra.main(config_path="src/conf", config_name="train_xplain")
 def run_experiment(config: DictConfig):
     wandb.init(project=config.project, entity="elte-ai4covid")
-    fold = np.random.randint(0, 5)
+    fold = np.random.randint(0, 5) if config.fold == -1 else config.fold
     datasets = generate_data(config, fold=fold)
 
     model = build_xplainable_model(config)

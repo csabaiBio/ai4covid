@@ -26,6 +26,7 @@ death_rate: 0.25
 
 cross_val_train: True
 n_folds: 5
+fold: -1
 
 dataset_identifier: age_average
 

@@ -24,6 +24,8 @@ def run_inference(chkpt_dir: str, save_model: bool, test: bool):
     prediction_model = tf.keras.models.Model(
         [
             model.get_layer(name="image").input,
+            model.get_layer(name="fourier").input,
+            model.get_layer(name="brixia").input,
             model.get_layer(name="mask").input,
             model.get_layer(name="meta").input,
         ],

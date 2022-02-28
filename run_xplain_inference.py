@@ -37,7 +37,7 @@ def plot_attention(image, attention_plot, n_features, IND, config):
     plt.close(fig)
 
 
-def run_inference(chkpt_dir: str, save_model: bool, test: bool):
+def run_inference(chkpt_dir: str, save_model: bool, test: bool, plot_all: bool):
     config_path = Path(chkpt_dir) / "config.yaml"
     config = omegaconf.OmegaConf.load(config_path)
 
@@ -115,23 +115,22 @@ def run_inference(chkpt_dir: str, save_model: bool, test: bool):
         config,
     )
 
-    for IND in tqdm(range(len(test_images))):
-        att = attentions[IND].reshape(256, 20)
-        image = os.path.join(
-            config.preprocessed_image_base_path.replace(
-                "train", "test" if test else "train"
-            ),
-            test_images[IND],
-        )
-        plot_attention(image, att, 20, IND, config)
-
-    test_predictions = prediction_model.predict(test_dataset)
-
-    test_predictions = np.argmax(test_predictions, axis=-1)
+    if args.plot_all:
+        for IND in tqdm(range(len(test_images))):
+            att = attentions[IND].reshape(256, 20)
+            image = os.path.join(
+                config.preprocessed_image_base_path.replace(
+                    "train", "test" if test else "train"
+                ),
+                test_images[IND],
+            )
+            plot_attention(image, att, 20, IND, config)
 
     df = pd.DataFrame(columns=["file", "prognosis"])
     df["file"] = test_images
-    df["prognosis"] = ["MILD" if test == 0 else "SEVERE" for test in test_predictions]
+    df["prognosis"] = [
+        "MILD" if test < 0.5 else "SEVERE" for test in test_predictions.flatten()
+    ]
 
     df.to_csv("pred_xplain.csv", index=False)
 
@@ -148,6 +147,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--save_model", action="store_true", default=False)
     parser.add_argument("--test", action="store_true", default=False)
+    parser.add_argument("--plot_all", action="store_true", default=False)
 
     args = parser.parse_args()
-    run_inference(args.chkpt_dir, args.save_model, args.test)
+    run_inference(args.chkpt_dir, args.save_model, args.test, args.plot_all)

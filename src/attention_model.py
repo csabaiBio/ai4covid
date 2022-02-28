@@ -229,7 +229,7 @@ def build_xplainable_model(config):
     lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
         config.learning_rate,
         decay_steps=3 * config.steps_per_epoch,
-        decay_rate=0.15,
+        decay_rate=0.96,
         staircase=False,
     )
 

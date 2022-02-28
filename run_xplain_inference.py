@@ -117,7 +117,7 @@ def run_inference(chkpt_dir: str, save_model: bool, test: bool, plot_all: bool):
 
     if args.plot_all:
         for IND in tqdm(range(len(test_images))):
-            att = attentions[IND].reshape(256, 20)
+            att = attentions[IND].reshape(256, -1)
             image = os.path.join(
                 config.preprocessed_image_base_path.replace(
                     "train", "test" if test else "train"

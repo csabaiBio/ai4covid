@@ -51,6 +51,7 @@ def run_experiment(config: DictConfig):
     cp_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=chkpt_path,
         save_weights_only=True,
+        save_best_only=True,
         verbose=0,
         monitor="val_balanced_accuracy",
         save_freq="epoch",
@@ -58,13 +59,12 @@ def run_experiment(config: DictConfig):
     )
 
     early_stopping = tf.keras.callbacks.EarlyStopping(
-        monitor="val_loss",
+        monitor="val_balanced_accuracy",
         min_delta=0,
         patience=5,
         verbose=0,
         mode="min",
         baseline=None,
-        restore_best_weights=True,
     )
 
     _ = model.fit(

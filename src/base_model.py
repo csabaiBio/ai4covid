@@ -131,22 +131,27 @@ def build_model(config):
     fourier_out = GlobalAveragePooling2D(name="fourier_avg_pool")(fourier)
 
     ## META HEAD
-    meta = Dense(64, activation="relu")(meta)
-    meta = BatchNormalization(name="meta_bn1")(meta)
     meta = Dense(128, activation="relu")(meta)
-    meta = BatchNormalization(name="meta_bn2")(meta)
+    meta = BatchNormalization(name="meta_bn1")(meta)
     meta = Dense(256, activation="relu")(meta)
-    meta_out = BatchNormalization(name="meta_bn3")(meta)
+    meta = BatchNormalization(name="meta_bn2")(meta)
+    meta = Dense(512, activation="relu")(meta)
+    meta = BatchNormalization(name="meta_bn3")(meta)
+    meta = Dense(1024, activation="relu")(meta)
+    meta_out = BatchNormalization(name="meta_bn4")(meta)
 
     ## COMBINED HEAD
     combined = Concatenate(axis=-1, name="concat_heads")(
         [image_out, fourier_out, meta_out]
     )
-    out = Dense(256, activation="relu")(combined)
+    out = Dense(512, activation="relu")(combined)
     out = BatchNormalization(name="head_bn1")(out)
     out = Dropout(0.2)(out)
-    out = Dense(config.last_dense_size, activation="relu")(out)
+    out = Dense(256, activation="relu")(out)
     out = BatchNormalization(name="head_bn2")(out)
+    out = Dropout(0.2)(out)
+    out = Dense(config.last_dense_size, activation="relu")(out)
+    out = BatchNormalization(name="head_bn3")(out)
     out = Dense(4, activation="linear", name="unnormalized_output")(out)
 
     p, d = Lambda(lambda x: tf.split(x, num_or_size_splits=2, axis=1), name="outputs")(

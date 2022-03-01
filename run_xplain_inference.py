@@ -12,8 +12,11 @@ from tqdm import tqdm
 from src.attention_model import build_xplainable_model
 from src.data import generate_data, generate_test_data
 
+physical_devices = tf.config.list_physical_devices("GPU")
+tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
-def plot_attention(image, attention_plot, n_features, IND, config):
+
+def plot_attention(image, attention_plot, n_features, IND, config, chkpt_dir):
     if type(image) == np.ndarray:
         temp_image = image
     else:
@@ -31,7 +34,7 @@ def plot_attention(image, attention_plot, n_features, IND, config):
         ax.set_yticks([])
 
     plt.tight_layout()
-    output_path = os.path.join(config.raw_output_base, "attentions", f"attn_{IND}.png")
+    output_path = os.path.join(chkpt_dir, "attentions", f"attn_{IND}.png")
     Path(output_path).parents[0].mkdir(exist_ok=True, parents=True)
     plt.savefig(output_path, dpi=100)
     plt.close(fig)
@@ -86,33 +89,37 @@ def run_inference(chkpt_dir: str, save_model: bool, test: bool, plot_all: bool):
     plot_attention(
         np.zeros(shape=(config.img_size, config.img_size)),
         mean_attention,
-        36,
+        20,
         "mean" if test else "valid_mean",
         config,
+        chkpt_dir,
     )
 
     plot_attention(
         np.zeros(shape=(config.img_size, config.img_size)),
         std_attention,
-        36,
+        20,
         "std" if test else "valid_std",
         config,
+        chkpt_dir,
     )
 
     plot_attention(
         np.zeros(shape=(config.img_size, config.img_size)),
         np.log(mean_attention),
-        36,
+        20,
         "log_mean" if test else "valid_log_mean",
         config,
+        chkpt_dir,
     )
 
     plot_attention(
         np.zeros(shape=(config.img_size, config.img_size)),
         np.log(std_attention),
-        36,
+        20,
         "log_std" if test else "valid_log_std",
         config,
+        chkpt_dir,
     )
 
     if args.plot_all:
@@ -124,7 +131,7 @@ def run_inference(chkpt_dir: str, save_model: bool, test: bool, plot_all: bool):
                 ),
                 test_images[IND],
             )
-            plot_attention(image, att, 36, IND, config)
+            plot_attention(image, att, 20, IND, config, chkpt_dir)
 
     df = pd.DataFrame(columns=["file", "prognosis"])
     df["file"] = test_images
@@ -132,7 +139,7 @@ def run_inference(chkpt_dir: str, save_model: bool, test: bool, plot_all: bool):
         "MILD" if test < 0.5 else "SEVERE" for test in test_predictions.flatten()
     ]
 
-    df.to_csv("pred_xplain.csv", index=False)
+    df.to_csv(os.path.join(chkpt_dir, "pred_xplain.csv"), index=False)
 
 
 if __name__ == "__main__":

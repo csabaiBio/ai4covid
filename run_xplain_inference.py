@@ -23,7 +23,7 @@ def plot_attention(image, attention_plot, n_features, IND, config):
 
     for i in range(n_features):
         temp_att = np.resize(attention_plot[:, i], (16, 16))
-        ax = fig.add_subplot(4, 5, i + 1)
+        ax = fig.add_subplot(6, 6, i + 1)
         ax.set_title(config.datasets[config.dataset_identifier].feature_cols[i])
         img = ax.imshow(temp_image)
         ax.imshow(temp_att, cmap="gray", alpha=0.6, extent=img.get_extent())
@@ -86,7 +86,7 @@ def run_inference(chkpt_dir: str, save_model: bool, test: bool, plot_all: bool):
     plot_attention(
         np.zeros(shape=(config.img_size, config.img_size)),
         mean_attention,
-        20,
+        36,
         "mean" if test else "valid_mean",
         config,
     )
@@ -94,7 +94,7 @@ def run_inference(chkpt_dir: str, save_model: bool, test: bool, plot_all: bool):
     plot_attention(
         np.zeros(shape=(config.img_size, config.img_size)),
         std_attention,
-        20,
+        36,
         "std" if test else "valid_std",
         config,
     )
@@ -102,7 +102,7 @@ def run_inference(chkpt_dir: str, save_model: bool, test: bool, plot_all: bool):
     plot_attention(
         np.zeros(shape=(config.img_size, config.img_size)),
         np.log(mean_attention),
-        20,
+        36,
         "log_mean" if test else "valid_log_mean",
         config,
     )
@@ -110,7 +110,7 @@ def run_inference(chkpt_dir: str, save_model: bool, test: bool, plot_all: bool):
     plot_attention(
         np.zeros(shape=(config.img_size, config.img_size)),
         np.log(std_attention),
-        20,
+        36,
         "log_std" if test else "valid_log_std",
         config,
     )
@@ -124,7 +124,7 @@ def run_inference(chkpt_dir: str, save_model: bool, test: bool, plot_all: bool):
                 ),
                 test_images[IND],
             )
-            plot_attention(image, att, 20, IND, config)
+            plot_attention(image, att, 36, IND, config)
 
     df = pd.DataFrame(columns=["file", "prognosis"])
     df["file"] = test_images

@@ -13,9 +13,7 @@ def split(args):
     csv_name = Path(args.base_csv).stem
     base_csv_path = Path(args.base_csv).parent
     for i in range(args.n_splits):
-        train, test = train_test_split(
-            df, test_size=args.test_size, random_state=np.random.randint(42, 13742)
-        )
+        train, test = train_test_split(df, test_size=args.test_size, random_state=13742)
         train.to_csv(
             os.path.join(base_csv_path, csv_name + f"_cv{i + 1}.csv"), index=False
         )

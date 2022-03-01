@@ -60,7 +60,7 @@ class BinaryEndpointLayer(layers.Layer):
                     0.95, name="specificity_at_95_pct_recall"
                 ),
             ]
-            self.rate = 1.0
+            self.rate = 5.0
         else:
             self.binary_metrics = [
                 BACC(name="death_balanced_accuracy"),
@@ -115,6 +115,9 @@ def build_model(config):
         pooling="avg",
     )
     backbone.trainable = True
+
+    print(backbone.layers)
+
     image_out = backbone(input_raw)
 
     ## FOURIER HEAD
@@ -144,14 +147,17 @@ def build_model(config):
     combined = Concatenate(axis=-1, name="concat_heads")(
         [image_out, fourier_out, meta_out]
     )
-    out = Dense(512, activation="relu")(combined)
+    out = Dense(1024, activation="relu")(combined)
     out = BatchNormalization(name="head_bn1")(out)
     out = Dropout(0.2)(out)
-    out = Dense(256, activation="relu")(out)
+    out = Dense(512, activation="relu")(out)
     out = BatchNormalization(name="head_bn2")(out)
     out = Dropout(0.2)(out)
-    out = Dense(config.last_dense_size, activation="relu")(out)
+    out = Dense(256, activation="relu")(out)
     out = BatchNormalization(name="head_bn3")(out)
+    out = Dropout(0.2)(out)
+    out = Dense(config.last_dense_size, activation="relu")(out)
+    out = BatchNormalization(name="head_bn4")(out)
     out = Dense(4, activation="linear", name="unnormalized_output")(out)
 
     p, d = Lambda(lambda x: tf.split(x, num_or_size_splits=2, axis=1), name="outputs")(

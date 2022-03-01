@@ -9,7 +9,8 @@ import tensorflow as tf
 from src.base_model import build_model
 from src.data import generate_data, generate_test_data
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+physical_devices = tf.config.list_physical_devices("GPU")
+tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 
 def run_inference(chkpt_dir: str, save_model: bool, test: bool):

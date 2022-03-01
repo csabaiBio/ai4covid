@@ -202,11 +202,11 @@ def build_xplainable_model(config):
     attention_weights = Lambda(lambda x: x, name="attention_weights")(attention_weights)
 
     ## PREDICTION HEAD
-    out = Bidirectional(LSTM(128, return_sequences=True, dropout=0.35))(context_vector)
+    out = Bidirectional(LSTM(256, return_sequences=True, dropout=0.35))(context_vector)
     out = BatchNormalization(name="lstm_bn1")(out)
-    out = Bidirectional(LSTM(128, return_sequences=False, dropout=0.35))(out)
+    out = Bidirectional(LSTM(256, return_sequences=False, dropout=0.35))(out)
     out = BatchNormalization(name="lstm_bn2")(out)
-    out = Dense(64, activation="relu", name="dense_out_1")(out)
+    out = Dense(128, activation="relu", name="dense_out_1")(out)
     out = Dense(2, activation="linear", name="dense_out_2")(out)
 
     p, d = Lambda(lambda x: tf.split(x, num_or_size_splits=2, axis=1), name="outputs")(
@@ -229,7 +229,7 @@ def build_xplainable_model(config):
     lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
         config.learning_rate,
         decay_steps=3 * config.steps_per_epoch,
-        decay_rate=0.15,
+        decay_rate=0.96,
         staircase=False,
     )
 

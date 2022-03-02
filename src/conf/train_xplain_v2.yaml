@@ -32,9 +32,9 @@ dataset_identifier: age_average
 
 datasets:
   age_average:
-    train_table: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/tables/age_avg/trainClinDataImputedAgeAvg.csv
-    valid_table: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/tables/age_avg/trainClinDataImputedAgeAvg.csv
+    train_table: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/tables/age_avg/trainClinDataImputedAgeAvg_F.csv
+    valid_table: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/tables/age_avg/trainClinDataImputedAgeAvg_F.csv
     test_table: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/tables/age_avg/testClinDataImputedAgeAvg.csv
     cv_train_table: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/tables/age_avg/trainClinData_F_
     cv_valid_table: /mnt/ncshare/ai4covid_hackathon/preprocessed_data/tables/age_avg/validClinData_F_
-    feature_cols: ['Age', 'Sex', 'Temp_C', 'Cough', 'WBC', 'CRP', 'Fibrinogen', 'Glucose', 'LDH', 'D_dimer', 'Ox_percentage', 'PaO2', 'SaO2', 'pH', 'HeartFailure', 'HighBloodPressure', 'Diabetes', 'Cancer', 'RespiratoryFailure', 'Obesity']
+    feature_cols: ['Age', 'Sex', 'PositivityAtAdmission', 'Temp_C', 'DaysFever', 'Cough', 'DifficultyInBreathing', 'WBC', 'RBC', 'CRP', 'Fibrinogen', 'Glucose', 'PCT', 'LDH', 'INR', 'D_dimer', 'Ox_percentage', 'PaO2', 'SaO2', 'PaCO2', 'pH', 'CardiovascularDisease', 'IschemicHeartDisease', 'AtrialFibrillation', 'HeartFailure', 'Ictus', 'HighBloodPressure', 'Diabetes', 'Dementia', 'BPCO', 'Cancer', 'ChronicKidneyDisease', 'RespiratoryFailure', 'Obesity', 'Position']

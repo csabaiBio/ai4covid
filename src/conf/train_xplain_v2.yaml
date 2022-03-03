@@ -13,7 +13,7 @@ backbone: EfficientNetB0
 cnn_encode_dim: 256
 transformer_encode_dim: 200
 transformer_heads: 15
-bahdanau_dim: 256
+bahdanau_dim: 512
 
 visualize: True
 augment: True

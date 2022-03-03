@@ -16,11 +16,13 @@ physical_devices = tf.config.list_physical_devices("GPU")
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 
-def plot_attention(image, attention_plot, n_features, IND, config, chkpt_dir):
+def plot_attention(image, attention_plot, IND, config, chkpt_dir):
     if type(image) == np.ndarray:
         temp_image = image
     else:
         temp_image = np.array(cv2.imread(image))
+
+    n_features = len(config.datasets[config.dataset_identifier].feature_cols)
 
     fig = plt.figure(figsize=(20, 20))
 
@@ -28,7 +30,7 @@ def plot_attention(image, attention_plot, n_features, IND, config, chkpt_dir):
         temp_att = np.resize(attention_plot[:, i], (16, 16))
         ax = fig.add_subplot(6, 6, i + 1)
         ax.set_title(config.datasets[config.dataset_identifier].feature_cols[i])
-        img = ax.imshow(temp_image)
+        img = ax.imshow(temp_image, cmap="gray")
         ax.imshow(temp_att, cmap="gray", alpha=0.6, extent=img.get_extent())
         ax.set_xticks([])
         ax.set_yticks([])
@@ -87,37 +89,49 @@ def run_inference(chkpt_dir: str, save_model: bool, test: bool, plot_all: bool):
     std_attention = np.std(attentions, axis=0)
 
     plot_attention(
-        np.zeros(shape=(config.img_size, config.img_size)),
+        np.load("diff.npy"),
         mean_attention,
-        20,
+        "diff_mean" if test else "valid_diff_mean",
+        config,
+        chkpt_dir,
+    )
+
+    plot_attention(
+        np.load("diff.npy"),
+        std_attention,
+        "diff_std" if test else "valid_diff_std",
+        config,
+        chkpt_dir,
+    )
+
+    plot_attention(
+        np.zeros(shape=(config.img_size, config.img_size, 1)),
+        mean_attention,
         "mean" if test else "valid_mean",
         config,
         chkpt_dir,
     )
 
     plot_attention(
-        np.zeros(shape=(config.img_size, config.img_size)),
+        np.zeros(shape=(config.img_size, config.img_size, 1)),
         std_attention,
-        20,
         "std" if test else "valid_std",
         config,
         chkpt_dir,
     )
 
     plot_attention(
-        np.zeros(shape=(config.img_size, config.img_size)),
-        np.log(mean_attention),
-        20,
-        "log_mean" if test else "valid_log_mean",
+        np.load("ratio.npy"),
+        mean_attention,
+        "ratio_mean" if test else "valid_ratio_mean",
         config,
         chkpt_dir,
     )
 
     plot_attention(
-        np.zeros(shape=(config.img_size, config.img_size)),
+        np.load("ratio.npy"),
         np.log(std_attention),
-        20,
-        "log_std" if test else "valid_log_std",
+        "ratio_std" if test else "valid_ratio_std",
         config,
         chkpt_dir,
     )
@@ -131,7 +145,7 @@ def run_inference(chkpt_dir: str, save_model: bool, test: bool, plot_all: bool):
                 ),
                 test_images[IND],
             )
-            plot_attention(image, att, 20, IND, config, chkpt_dir)
+            plot_attention(image, att, IND, config, chkpt_dir)
 
     df = pd.DataFrame(columns=["file", "prognosis"])
     df["file"] = test_images

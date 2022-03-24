@@ -115,10 +115,7 @@ def build_model(config):
         pooling="avg",
     )
     backbone.trainable = True
-
-    print(backbone.layers)
-
-    image_out = backbone(input_raw)
+    image_out = backbone(input_raw)  # ~1000
 
     ## FOURIER HEAD
     fourier = Conv2D(16, (7, 7), strides=(2, 2), activation="relu")(input_fourier)
@@ -131,7 +128,7 @@ def build_model(config):
     fourier = BatchNormalization(name="fourier_bn4")(fourier)
     fourier = Conv2D(256, (3, 3), strides=(2, 2), activation="relu")(fourier)
     fourier = BatchNormalization(name="fourier_bn5")(fourier)
-    fourier_out = GlobalAveragePooling2D(name="fourier_avg_pool")(fourier)
+    fourier_out = GlobalAveragePooling2D(name="fourier_avg_pool")(fourier)  # 256
 
     ## META HEAD
     meta = Dense(128, activation="relu")(meta)
@@ -140,7 +137,7 @@ def build_model(config):
     meta = BatchNormalization(name="meta_bn2")(meta)
     meta = Dense(512, activation="relu")(meta)
     meta = BatchNormalization(name="meta_bn3")(meta)
-    meta = Dense(1024, activation="relu")(meta)
+    meta_out = Dense(1024, activation="relu")(meta)  # ~1000
     meta_out = BatchNormalization(name="meta_bn4")(meta)
 
     ## COMBINED HEAD

@@ -1,0 +1,14 @@
+img_size: 512
+base_data_path: ./data/
+image_base_path: ./data/raw_data/TestSet
+weights_base_path: ./data/weights/
+output_base_path: ./data/preprocessed_data/test
+train_table_path: ./data/raw_data/trainClinData.xls
+
+table_path: ./data/raw_data/testClinData.xls
+
+corner_ratio: 0.2
+center_ratio: 0.05
+use_bottom: False
+
+save_images: True

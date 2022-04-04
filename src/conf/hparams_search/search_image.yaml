@@ -1,0 +1,39 @@
+method: bayes
+metric:
+  goal: maximize
+  name: val_balanced_accuracy
+parameters:
+  backbone:
+    distribution: categorical
+    values: ["EfficientNetB0", "EfficientNetB1", "ResNet50"]
+  batch_size:
+    distribution: int_uniform
+    max: 12
+    min: 6
+  epochs:
+    distribution: int_uniform
+    max: 50
+    min: 25
+  img_size:
+    distribution: int_uniform
+    max: 500
+    min: 240
+  learning_rate:
+    distribution: uniform
+    max: 0.02
+    min: 1e-05
+  steps_per_epoch:
+    distribution: int_uniform
+    max: 600
+    min: 350
+  death_rate:
+    distribution: uniform
+    max: 0.5
+    min: 0.01
+
+program: run_image_only_hyperopt.py
+
+command:
+- ${interpreter}
+- ${program}
+- ${args_no_hyphens}

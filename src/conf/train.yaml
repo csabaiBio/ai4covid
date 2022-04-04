@@ -1,0 +1,53 @@
+project: ai4covid
+
+segmentation_base_path: ./data/preprocessed_data/train/segmented
+preprocessed_image_base_path: ./data/preprocessed_data/train/aligned
+fourier_base_path: ./data/preprocessed_data/train/fourier_2d
+brixia_score_base_path: ./data/preprocessed_data/train/score_original
+raw_output_base: ./data/raw_output
+
+img_size: 259
+backbone: EfficientNetB1
+last_dense_size: 64
+batch_size: 7
+epochs: 36
+learning_rate: 0.0020146207110421084
+steps_per_epoch: 363
+death_rate: 0.13747478719961848
+visualize: True
+augment: True
+cross_val_train: True
+fold: -1
+n_folds: 5
+
+dataset_identifier: age_average
+
+datasets:
+  population_average:
+    train_table: ./data/preprocessed_data/tables/pop_avg/trainClinDataImputedPopAvg.csv
+    valid_table: ./data/preprocessed_data/tables/pop_avg/trainClinDataImputedPopAvg.csv
+    test_table: ./data/preprocessed_data/tables/pop_avg/testClinDataImputedPopAvg.csv
+    cv_train_table: ./data/preprocessed_data/tables/pop_avg/trainClinDataImputedPopAvg_
+    cv_valid_table: ./data/preprocessed_data/tables/pop_avg/validClinDataImputedPopAvg_
+    feature_cols: ['Age', 'Sex', 'PositivityAtAdmission', 'Temp_C', 'DaysFever', 'Cough', 'DifficultyInBreathing', 'WBC', 'RBC', 'CRP', 'Fibrinogen', 'Glucose', 'PCT', 'LDH', 'INR', 'D_dimer', 'Ox_percentage', 'PaO2', 'SaO2', 'PaCO2', 'pH', 'CardiovascularDisease', 'IschemicHeartDisease', 'AtrialFibrillation', 'HeartFailure', 'Ictus', 'HighBloodPressure', 'Diabetes', 'Dementia', 'BPCO', 'Cancer', 'ChronicKidneyDisease', 'RespiratoryFailure', 'Obesity', 'Position', 'Hospital_A', 'Hospital_B', 'Hospital_C', 'Hospital_D', 'Hospital_E', 'Hospital_F']
+  population_sampled:
+    train_table: ./data/preprocessed_data/tables/pop_sampled/trainClinDataImputedRandSampled.csv
+    valid_table: ./data/preprocessed_data/tables/pop_sampled/trainClinDataImputedRandSampled.csv
+    test_table: ./data/preprocessed_data/tables/pop_sampled/testClinDataImputedRandSampled.csv
+    cv_train_table: ./data/preprocessed_data/tables/pop_sampled/trainClinDataImputedRandSampled_
+    cv_valid_table: ./data/preprocessed_data/tables/pop_sampled/validClinDataImputedRandSampled_
+    feature_cols: ['Age', 'Sex', 'PositivityAtAdmission', 'Temp_C', 'DaysFever', 'Cough', 'DifficultyInBreathing', 'WBC', 'RBC', 'CRP', 'Fibrinogen', 'Glucose', 'PCT', 'LDH', 'INR', 'D_dimer', 'Ox_percentage', 'PaO2', 'SaO2', 'PaCO2', 'pH', 'CardiovascularDisease', 'IschemicHeartDisease', 'AtrialFibrillation', 'HeartFailure', 'Ictus', 'HighBloodPressure', 'Diabetes', 'Dementia', 'BPCO', 'Cancer', 'ChronicKidneyDisease', 'RespiratoryFailure', 'Obesity', 'Position', 'Hospital_A', 'Hospital_B', 'Hospital_C', 'Hospital_D', 'Hospital_E', 'Hospital_F']
+  age_average:
+    train_table: ./data/preprocessed_data/tables/age_avg/trainClinDataImputedAgeAvg.csv
+    valid_table: ./data/preprocessed_data/tables/age_avg/trainClinDataImputedAgeAvg.csv
+    test_table: ./data/preprocessed_data/tables/age_avg/testClinDataImputedAgeAvg.csv
+    cv_train_table: ./data/preprocessed_data/tables/age_avg/trainClinDataImputedAgeAvg_
+    cv_valid_table: ./data/preprocessed_data/tables/age_avg/validClinDataImputedAgeAvg_
+    feature_cols: ['Age', 'Sex', 'PositivityAtAdmission', 'Temp_C', 'DaysFever', 'Cough', 'DifficultyInBreathing', 'WBC', 'RBC', 'CRP', 'Fibrinogen', 'Glucose', 'PCT', 'LDH', 'INR', 'D_dimer', 'Ox_percentage', 'PaO2', 'SaO2', 'PaCO2', 'pH', 'CardiovascularDisease', 'IschemicHeartDisease', 'AtrialFibrillation', 'HeartFailure', 'Ictus', 'HighBloodPressure', 'Diabetes', 'Dementia', 'BPCO', 'Cancer', 'ChronicKidneyDisease', 'RespiratoryFailure', 'Obesity', 'Position', 'Hospital_A', 'Hospital_B', 'Hospital_C', 'Hospital_D', 'Hospital_E', 'Hospital_F']
+  hospital_average:
+    train_table: ./data/preprocessed_data/tables/hosp_avg/trainClinDataImputedHospAvg.csv
+    valid_table: ./data/preprocessed_data/tables/hosp_avg/trainClinDataImputedHospAvg.csv
+    test_table: ./data/preprocessed_data/tables/hosp_avg/testClinDataImputedHospAvg.csv
+    cv_train_table: ./data/preprocessed_data/tables/hosp_avg/trainClinDataImputedHospAvg_
+    cv_valid_table: ./data/preprocessed_data/tables/hosp_avg/validClinDataImputedHospAvg_
+    feature_cols: ['Age', 'Sex', 'PositivityAtAdmission', 'Temp_C', 'DaysFever', 'Cough', 'DifficultyInBreathing', 'WBC', 'RBC', 'CRP', 'Fibrinogen', 'Glucose', 'PCT', 'LDH', 'INR', 'D_dimer', 'Ox_percentage', 'PaO2', 'SaO2', 'PaCO2', 'pH', 'CardiovascularDisease', 'IschemicHeartDisease', 'AtrialFibrillation', 'HeartFailure', 'Ictus', 'HighBloodPressure', 'Diabetes', 'Dementia', 'BPCO', 'Cancer', 'ChronicKidneyDisease', 'RespiratoryFailure', 'Obesity', 'Position', 'Hospital_A', 'Hospital_B', 'Hospital_C', 'Hospital_D', 'Hospital_E', 'Hospital_F']

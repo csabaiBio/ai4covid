@@ -19,7 +19,7 @@ augment: True
 cross_val_train: True
 n_folds: 5
 
-dataset_identifier: age_average
+dataset_identifier: population_average
 
 datasets:
   population_average:

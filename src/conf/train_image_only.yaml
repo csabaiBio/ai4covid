@@ -17,6 +17,7 @@ death_rate: 0.26111899568411556
 visualize: True
 augment: True
 cross_val_train: True
+fold: -1
 n_folds: 5
 
 dataset_identifier: population_average

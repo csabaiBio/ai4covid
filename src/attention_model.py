@@ -8,11 +8,8 @@ from tensorflow.keras.layers import (
     Concatenate,
     Conv2D,
     Dense,
-    Dropout,
-    Flatten,
     Input,
     Lambda,
-    Softmax,
 )
 
 from src.balanced_accuracy import BACC

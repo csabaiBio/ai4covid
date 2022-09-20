@@ -34,7 +34,7 @@ def run_experiments(config: DictConfig):
     chkpt_dir = (
         Path(config.raw_output_base)
         / "checkpoints_image_only"
-        / datetime.now().strftime("%Y-%m-%d_%H:%M:%S.%f")
+        / datetime.now().strftime("ES_%Y-%m-%d_%H:%M:%S.%f")
     )
 
     Path(chkpt_dir).mkdir(exist_ok=True, parents=True)
@@ -56,12 +56,22 @@ def run_experiments(config: DictConfig):
         mode="max",
     )
 
+    early_stopping = tf.keras.callbacks.EarlyStopping(
+        monitor="val_loss",
+        min_delta=0,
+        patience=5,
+        verbose=0,
+        mode="min",
+        baseline=None,
+        restore_best_weights=True,
+    )
+
     _ = model.fit(
         datasets["train_dataset"],
         validation_data=datasets["validation_dataset"],
         epochs=config.epochs,
         steps_per_epoch=config.steps_per_epoch,
-        callbacks=[WandbCallback(), cp_callback],
+        callbacks=[WandbCallback(), cp_callback, early_stopping],
         verbose=1,
     )
 

@@ -58,21 +58,12 @@ def run_experiment(config: DictConfig):
         mode="max",
     )
 
-    early_stopping = tf.keras.callbacks.EarlyStopping(
-        monitor="val_balanced_accuracy",
-        min_delta=0,
-        patience=5,
-        verbose=0,
-        mode="min",
-        baseline=None,
-    )
-
     _ = model.fit(
         datasets["train_dataset"],
         validation_data=datasets["validation_dataset"],
         epochs=config.epochs,
         steps_per_epoch=config.steps_per_epoch,
-        callbacks=[WandbCallback(), cp_callback, early_stopping],
+        callbacks=[WandbCallback(), cp_callback],
         verbose=1,
     )
 

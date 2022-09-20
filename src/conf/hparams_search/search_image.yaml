@@ -34,9 +34,6 @@ parameters:
     distribution: int_uniform
     min: 50
     max: 128
-  dataset_identifier:
-    distribution: categorical
-    values: ["population_average", "population_sampled", "age_average", "hospital_average"]
 
 program: run_image_only_hyperopt.py
 

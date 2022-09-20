@@ -2,17 +2,19 @@ import os
 import random
 from datetime import datetime
 from pathlib import Path
+from typing import Dict, List
 
 import hydra
 import numpy as np
 import omegaconf
 import tensorflow as tf
 from omegaconf import DictConfig
+from tqdm import tqdm
 from wandb.keras import WandbCallback
 
 import wandb
+from src.base_model import build_model
 from src.data import generate_data
-from src.image_model import build_model
 
 tf.keras.backend.clear_session()
 tf.autograph.set_verbosity(level=0, alsologtostdout=False)
@@ -22,10 +24,9 @@ physical_devices = tf.config.list_physical_devices("GPU")
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 
-@hydra.main(config_path="src/conf", config_name="train_image_only")
+@hydra.main(config_path="src/conf", config_name="train")
 def run_experiments(config: DictConfig):
     wandb.init(project=config.project, entity="elte-ai4covid")
-
     fold = np.random.randint(0, 5) if config.fold == -1 else config.fold
     datasets = generate_data(config, fold=fold)
 
@@ -33,7 +34,7 @@ def run_experiments(config: DictConfig):
 
     chkpt_dir = (
         Path(config.raw_output_base)
-        / "checkpoints_image_only"
+        / "checkpoints"
         / datetime.now().strftime("%Y-%m-%d_%H:%M:%S.%f")
     )
 
@@ -50,10 +51,21 @@ def run_experiments(config: DictConfig):
     cp_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=chkpt_path,
         save_weights_only=True,
+        save_best_only=True,
         verbose=0,
         monitor="val_balanced_accuracy",
         save_freq="epoch",
         mode="max",
+    )
+
+    early_stopping = tf.keras.callbacks.EarlyStopping(
+        monitor="val_loss",
+        min_delta=0,
+        patience=5,
+        verbose=0,
+        mode="min",
+        baseline=None,
+        restore_best_weights=True,
     )
 
     _ = model.fit(
@@ -61,7 +73,7 @@ def run_experiments(config: DictConfig):
         validation_data=datasets["validation_dataset"],
         epochs=config.epochs,
         steps_per_epoch=config.steps_per_epoch,
-        callbacks=[WandbCallback(), cp_callback],
+        callbacks=[WandbCallback(), cp_callback, early_stopping],
         verbose=1,
     )
 

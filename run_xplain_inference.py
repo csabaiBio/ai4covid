@@ -153,7 +153,10 @@ def run_inference(chkpt_dir: str, save_model: bool, test: bool, plot_all: bool):
         "MILD" if test < 0.5 else "SEVERE" for test in test_predictions.flatten()
     ]
 
-    df.to_csv(os.path.join(chkpt_dir, "pred_xplain.csv"), index=False)
+    df.to_csv(
+        os.path.join(chkpt_dir, "pred_xplain.csv" if test else "pred_xplain_valid.csv"),
+        index=False,
+    )
 
 
 if __name__ == "__main__":

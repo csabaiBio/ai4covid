@@ -35,7 +35,7 @@ def run_experiments(config: DictConfig):
     chkpt_dir = (
         Path(config.raw_output_base)
         / "checkpoints"
-        / datetime.now().strftime("%Y-%m-%d_%H:%M:%S.%f")
+        / datetime.now().strftime("ES_%Y-%m-%d_%H:%M:%S.%f")
     )
 
     Path(chkpt_dir).mkdir(exist_ok=True, parents=True)

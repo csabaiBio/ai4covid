@@ -153,6 +153,20 @@ def run_inference(chkpt_dir: str, save_model: bool, test: bool, plot_all: bool):
         "MILD" if test < 0.5 else "SEVERE" for test in test_predictions.flatten()
     ]
 
+    if test:
+        whole_test_df = pd.read_excel(
+            "/mnt/ncshare/ai4covid_hackathon/raw_data/completeTestClinData.xls"
+        )
+        test_raw_df = whole_test_df[["ImageFile", "Prognosis"]]
+        df["prognosis_real"] = test_raw_df["Prognosis"].values
+    else:
+        dataset = config.datasets[config.dataset_identifier]
+        fold = int(open(os.path.join(chkpt_dir, "fold"), "r").readline()) + 1
+        actual = pd.read_csv(dataset.cv_valid_table + f"cv{fold}.csv")
+        df["prognosis_real"] = [
+            "MILD" if val in (0, "MILD") else "SEVERE" for val in actual["Prognosis"]
+        ]
+
     df.to_csv(
         os.path.join(chkpt_dir, "pred_xplain.csv" if test else "pred_xplain_valid.csv"),
         index=False,

@@ -16,7 +16,7 @@ physical_devices = tf.config.list_physical_devices("GPU")
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 
-def plot_attention(image, attention_plot, IND, config, chkpt_dir):
+def plot_attention(image, attention_plot, IND, config, chkpt_dir, threshold=False):
     if type(image) == np.ndarray:
         temp_image = image
     else:
@@ -28,21 +28,30 @@ def plot_attention(image, attention_plot, IND, config, chkpt_dir):
 
     for i in range(n_features):
         temp_att = np.resize(attention_plot[:, i], (16, 16))
+        if threshold:
+            temp_att /= np.max(temp_att)
+            temp_att[temp_att < 0.1] = 0.0
         ax = fig.add_subplot(6, 6, i + 1)
-        ax.set_title(config.datasets[config.dataset_identifier].feature_cols[i])
+        ax.set_title(
+            config.datasets[config.dataset_identifier].feature_cols[i], fontsize=25
+        )
         img = ax.imshow(temp_image, cmap="gray")
         ax.imshow(temp_att, cmap="gray", alpha=0.6, extent=img.get_extent())
         ax.set_xticks([])
         ax.set_yticks([])
 
     plt.tight_layout()
-    output_path = os.path.join(chkpt_dir, "attentions", f"attn_{IND}.png")
+    output_path = os.path.join(
+        chkpt_dir,
+        "attentions",
+        f"attn_{IND}.png" if not threshold else f"attn_th_{IND}.png",
+    )
     Path(output_path).parents[0].mkdir(exist_ok=True, parents=True)
     plt.savefig(output_path, dpi=100)
     plt.close(fig)
 
 
-def run_inference(chkpt_dir: str, save_model: bool, test: bool, plot_all: bool):
+def run_inference(chkpt_dir: str, test: bool, plot_all: bool, threshold: bool):
     config_path = Path(chkpt_dir) / "config.yaml"
     config = omegaconf.OmegaConf.load(config_path)
 
@@ -64,12 +73,6 @@ def run_inference(chkpt_dir: str, save_model: bool, test: bool, plot_all: bool):
     )
 
     prediction_model.summary()
-
-    if save_model:
-        tf.saved_model.save(
-            prediction_model,
-            os.path.join(chkpt_dir, "saved_model"),
-        )
 
     if test:
         test_dataset, test_images = generate_test_data(config)
@@ -94,6 +97,7 @@ def run_inference(chkpt_dir: str, save_model: bool, test: bool, plot_all: bool):
         "diff_mean" if test else "valid_diff_mean",
         config,
         chkpt_dir,
+        threshold,
     )
 
     plot_attention(
@@ -102,6 +106,7 @@ def run_inference(chkpt_dir: str, save_model: bool, test: bool, plot_all: bool):
         "diff_std" if test else "valid_diff_std",
         config,
         chkpt_dir,
+        threshold,
     )
 
     plot_attention(
@@ -110,6 +115,7 @@ def run_inference(chkpt_dir: str, save_model: bool, test: bool, plot_all: bool):
         "mean" if test else "valid_mean",
         config,
         chkpt_dir,
+        threshold,
     )
 
     plot_attention(
@@ -118,6 +124,7 @@ def run_inference(chkpt_dir: str, save_model: bool, test: bool, plot_all: bool):
         "std" if test else "valid_std",
         config,
         chkpt_dir,
+        threshold,
     )
 
     plot_attention(
@@ -126,6 +133,7 @@ def run_inference(chkpt_dir: str, save_model: bool, test: bool, plot_all: bool):
         "ratio_mean" if test else "valid_ratio_mean",
         config,
         chkpt_dir,
+        threshold,
     )
 
     plot_attention(
@@ -134,6 +142,7 @@ def run_inference(chkpt_dir: str, save_model: bool, test: bool, plot_all: bool):
         "ratio_std" if test else "valid_ratio_std",
         config,
         chkpt_dir,
+        threshold,
     )
 
     if args.plot_all:
@@ -145,7 +154,7 @@ def run_inference(chkpt_dir: str, save_model: bool, test: bool, plot_all: bool):
                 ),
                 test_images[IND],
             )
-            plot_attention(image, att, IND, config, chkpt_dir)
+            plot_attention(image, att, IND, config, chkpt_dir, threshold)
 
     df = pd.DataFrame(columns=["file", "prognosis"])
     df["file"] = test_images
@@ -183,9 +192,9 @@ if __name__ == "__main__":
         default="/mnt/ncshare/ai4covid_hackathon/raw_output/checkpoints/2022-02-17_21:31:41.429757",
     )
 
-    parser.add_argument("--save_model", action="store_true", default=False)
     parser.add_argument("--test", action="store_true", default=False)
     parser.add_argument("--plot_all", action="store_true", default=False)
+    parser.add_argument("--threshold", action="store_true", default=False)
 
     args = parser.parse_args()
-    run_inference(args.chkpt_dir, args.save_model, args.test, args.plot_all)
+    run_inference(args.chkpt_dir, args.test, args.plot_all, args.threshold)

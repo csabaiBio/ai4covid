@@ -1,4 +1,5 @@
 import os
+import textwrap
 from pathlib import Path
 
 import cv2
@@ -16,7 +17,15 @@ physical_devices = tf.config.list_physical_devices("GPU")
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 
-def plot_attention(image, attention_plot, IND, config, chkpt_dir, threshold=False):
+def plot_attention(
+    image,
+    attention_plot,
+    IND,
+    config,
+    chkpt_dir,
+    threshold=False,
+    only_correlating_cols=False,
+):
     if type(image) == np.ndarray:
         temp_image = image
     else:
@@ -26,32 +35,84 @@ def plot_attention(image, attention_plot, IND, config, chkpt_dir, threshold=Fals
 
     fig = plt.figure(figsize=(20, 20))
 
-    for i in range(n_features):
-        temp_att = np.resize(attention_plot[:, i], (16, 16))
-        if threshold:
-            temp_att /= np.max(temp_att)
-            temp_att[temp_att < 0.1] = 0.0
-        ax = fig.add_subplot(6, 6, i + 1)
-        ax.set_title(
-            config.datasets[config.dataset_identifier].feature_cols[i], fontsize=25
+    if only_correlating_cols:
+        col_indicies = [5, 8, 10, 11, 14, 16, 18, 19, 20, 21, 22, 25, 26, 27, 29, 31]
+        features = list(
+            enumerate(config.datasets[config.dataset_identifier].feature_cols)
         )
-        img = ax.imshow(temp_image, cmap="gray")
-        ax.imshow(temp_att, cmap="gray", alpha=0.6, extent=img.get_extent())
-        ax.set_xticks([])
-        ax.set_yticks([])
+        features_to_keep = list(
+            filter(
+                lambda x: x[1]
+                not in ["ImageFile", "Prognosis", "Death", "Age", "Sex", "Position"],
+                features,
+            )
+        )
+        features_to_keep = list(
+            filter(
+                lambda x: x[1]
+                not in [
+                    f"Hospital_{letter}" for letter in ["A", "B", "C", "D", "E", "F"]
+                ],
+                features_to_keep,
+            )
+        )
+        n_features = len(features_to_keep)
+        j = 0
+
+    for i in range(n_features):
+        if only_correlating_cols:
+            if not (features_to_keep[i][0] in col_indicies):
+                temp_att = np.resize(
+                    attention_plot[:, features_to_keep[i][0]], (16, 16)
+                )
+                if threshold:
+                    temp_att /= np.max(temp_att)
+                    temp_att[temp_att < 0.1] = 0.0
+                ax = fig.add_subplot(4, 4, j + 1)
+                title = "\n".join(textwrap.wrap(features_to_keep[i][1], 15))
+                ax.set_title(title, fontsize=25)
+                img = ax.imshow(temp_image, cmap="gray")
+                ax.imshow(temp_att, cmap="gray", alpha=0.6, extent=img.get_extent())
+                ax.set_xticks([])
+                ax.set_yticks([])
+                j += 1
+        else:
+            temp_att = np.resize(attention_plot[:, i], (16, 16))
+            if threshold:
+                temp_att /= np.max(temp_att)
+                temp_att[temp_att < 0.1] = 0.0
+            ax = fig.add_subplot(6, 6, i + 1)
+            title = "\n".join(
+                textwrap.wrap(
+                    config.datasets[config.dataset_identifier].feature_cols[i], 15
+                )
+            )
+            ax.set_title(title, fontsize=25)
+            img = ax.imshow(temp_image, cmap="gray")
+            ax.imshow(temp_att, cmap="gray", alpha=0.6, extent=img.get_extent())
+            ax.set_xticks([])
+            ax.set_yticks([])
 
     plt.tight_layout()
     output_path = os.path.join(
         chkpt_dir,
         "attentions",
-        f"attn_{IND}.png" if not threshold else f"attn_th_{IND}.png",
+        "corr" if only_correlating_cols else "",
+        "thresholded" if threshold else "",
+        f"attn_{IND}.png",
     )
     Path(output_path).parents[0].mkdir(exist_ok=True, parents=True)
     plt.savefig(output_path, dpi=100)
     plt.close(fig)
 
 
-def run_inference(chkpt_dir: str, test: bool, plot_all: bool, threshold: bool):
+def run_inference(
+    chkpt_dir: str,
+    test: bool,
+    plot_all: bool,
+    threshold: bool,
+    only_correlating_cols: bool,
+):
     config_path = Path(chkpt_dir) / "config.yaml"
     config = omegaconf.OmegaConf.load(config_path)
 
@@ -88,61 +149,90 @@ def run_inference(chkpt_dir: str, test: bool, plot_all: bool, threshold: bool):
 
     test_predictions, attentions = prediction_model.predict(test_dataset)
 
-    mean_attention = np.mean(attentions, axis=0)
-    std_attention = np.std(attentions, axis=0)
+    D = np.load("diff.npy")
+    r = np.load("ratio.npy")
+
+    b = D / (r + 1)
+    a = r * b
+
+    discretized_test = test_predictions
+    discretized_test[discretized_test >= 0.5] = 1
+    discretized_test[discretized_test < 0.5] = 0
+
+    severe_ind = np.nonzero(discretized_test)[0]
+    mild_ind = np.nonzero(discretized_test - 1)[0]
+
+    mean_mild = np.mean(attentions[mild_ind], axis=0)
+    mean_severe = np.mean(attentions[severe_ind], axis=0)
 
     plot_attention(
-        np.load("diff.npy"),
-        mean_attention,
-        "diff_mean" if test else "valid_diff_mean",
+        a,
+        mean_mild,
+        "a_mean_mild" if test else "valid_a_mean_mild",
         config,
         chkpt_dir,
         threshold,
+        only_correlating_cols,
     )
 
     plot_attention(
-        np.load("diff.npy"),
-        std_attention,
-        "diff_std" if test else "valid_diff_std",
+        b,
+        mean_mild,
+        "b_mean_mild" if test else "valid_b_mean_mild",
         config,
         chkpt_dir,
         threshold,
+        only_correlating_cols,
+    )
+
+    plot_attention(
+        a,
+        mean_severe,
+        "a_mean_severe" if test else "valid_a_mean_severe",
+        config,
+        chkpt_dir,
+        threshold,
+        only_correlating_cols,
+    )
+
+    plot_attention(
+        b,
+        mean_severe,
+        "b_mean_severe" if test else "valid_b_mean_severe",
+        config,
+        chkpt_dir,
+        threshold,
+        only_correlating_cols,
     )
 
     plot_attention(
         np.zeros(shape=(config.img_size, config.img_size, 1)),
-        mean_attention,
-        "mean" if test else "valid_mean",
+        mean_severe,
+        "mean_severe" if test else "valid_mean_severe",
         config,
         chkpt_dir,
         threshold,
+        only_correlating_cols,
     )
 
     plot_attention(
         np.zeros(shape=(config.img_size, config.img_size, 1)),
-        std_attention,
-        "std" if test else "valid_std",
+        mean_mild,
+        "mean_mild" if test else "valid_mean_mild",
         config,
         chkpt_dir,
         threshold,
+        only_correlating_cols,
     )
 
     plot_attention(
-        np.load("ratio.npy"),
-        mean_attention,
-        "ratio_mean" if test else "valid_ratio_mean",
+        np.zeros(shape=(config.img_size, config.img_size, 1)),
+        mean_severe - mean_mild,
+        "mean_severe_minus_mild" if test else "valid_mean_severe_minus_mild",
         config,
         chkpt_dir,
         threshold,
-    )
-
-    plot_attention(
-        np.load("ratio.npy"),
-        np.log(std_attention),
-        "ratio_std" if test else "valid_ratio_std",
-        config,
-        chkpt_dir,
-        threshold,
+        only_correlating_cols,
     )
 
     if args.plot_all:
@@ -154,7 +244,9 @@ def run_inference(chkpt_dir: str, test: bool, plot_all: bool, threshold: bool):
                 ),
                 test_images[IND],
             )
-            plot_attention(image, att, IND, config, chkpt_dir, threshold)
+            plot_attention(
+                image, att, IND, config, chkpt_dir, threshold, only_correlating_cols
+            )
 
     df = pd.DataFrame(columns=["file", "prognosis"])
     df["file"] = test_images
@@ -195,6 +287,13 @@ if __name__ == "__main__":
     parser.add_argument("--test", action="store_true", default=False)
     parser.add_argument("--plot_all", action="store_true", default=False)
     parser.add_argument("--threshold", action="store_true", default=False)
+    parser.add_argument("--only_correlating_cols", action="store_true", default=False)
 
     args = parser.parse_args()
-    run_inference(args.chkpt_dir, args.test, args.plot_all, args.threshold)
+    run_inference(
+        args.chkpt_dir,
+        args.test,
+        args.plot_all,
+        args.threshold,
+        args.only_correlating_cols,
+    )

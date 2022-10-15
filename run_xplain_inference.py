@@ -8,6 +8,7 @@ import numpy as np
 import omegaconf
 import pandas as pd
 import tensorflow as tf
+from sklearn.metrics import balanced_accuracy_score
 from tqdm import tqdm
 
 from src.attention_model import build_xplainable_model
@@ -411,6 +412,10 @@ def run_inference(
     df.to_csv(
         os.path.join(chkpt_dir, "pred_xplain.csv" if test else "pred_xplain_valid.csv"),
         index=False,
+    )
+
+    print(
+        f'Balanced accuracy : {balanced_accuracy_score(df["prognosis_real"].values, df["prognosis"].values)}'
     )
 
 

@@ -270,6 +270,20 @@ def run_inference(
         output_path.replace("mean_severe_attentions", "mean_mild_attentions"), mean_mild
     )
 
+    all_output_path = os.path.join(
+        chkpt_dir,
+        "attentions",
+        "attentions.npy" if test else "valid_attentions.npy",
+    )
+    np.save(all_output_path, attentions)
+
+    pred_output_path = os.path.join(
+        chkpt_dir,
+        "attentions",
+        "predictions.npy" if test else "valid_predictions.npy",
+    )
+    np.save(pred_output_path, test_predictions)
+
     plot_attention(
         a,
         mean_mild,

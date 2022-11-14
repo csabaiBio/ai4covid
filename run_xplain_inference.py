@@ -35,7 +35,7 @@ def plot_attention(
 
     n_features = len(config.datasets[config.dataset_identifier].feature_cols)
 
-    fig = plt.figure(figsize=(40, 40))
+    fig = plt.figure(figsize=(48, 12))
 
     if only_correlating_cols:
         col_indicies = [5, 8, 10, 11, 14, 16, 18, 19, 20, 21, 22, 25, 26, 27, 29, 31]
@@ -102,9 +102,9 @@ def plot_attention(
                     minimum = -1 if global_minimum < 0 else 0
                     maximum = 1
 
-                ax = fig.add_subplot(4, 4, j + 1)
-                title = "\n".join(textwrap.wrap(features_to_keep[i][1], 15))
-                ax.set_title(title, fontsize=42, fontweight="bold")
+                ax = fig.add_subplot(2, 8, j + 1)
+                title = "\n".join(textwrap.wrap(features_to_keep[i][1], 7))
+                ax.set_title(title, fontsize=55)
                 img = ax.imshow(temp_image, cmap="gray", vmin=0, vmax=1)
                 cbar_data = ax.imshow(
                     temp_att,
@@ -115,7 +115,7 @@ def plot_attention(
                     extent=img.get_extent(),
                 )
                 cbar = fig.colorbar(cbar_data, ax=ax, extend="both")
-                cbar.minorticks_on()
+                cbar.set_ticks([])
                 ax.set_xticks([])
                 ax.set_yticks([])
                 j += 1
@@ -142,13 +142,13 @@ def plot_attention(
                 minimum = -1 if global_minimum < 0 else 0
                 maximum = 1
 
-            ax = fig.add_subplot(6, 6, i + 1)
-            title = "\n".join(
-                textwrap.wrap(
-                    config.datasets[config.dataset_identifier].feature_cols[i], 11
-                )
-            )
-            ax.set_title(title, fontsize=42, fontweight="bold")
+            ax = fig.add_subplot(3, 12, i + 1)
+            title = config.datasets[config.dataset_identifier].feature_cols[i]
+            if len(title) > 8:
+                title = "".join([c if c.isupper() else "" for c in title])
+            if len(title) == 1:
+                title = config.datasets[config.dataset_identifier].feature_cols[i][:8]
+            ax.set_title(title, fontsize=50)
             img = ax.imshow(temp_image, cmap="gray", vmin=0, vmax=1)
             cbar_data = ax.imshow(
                 temp_att,
@@ -166,7 +166,7 @@ def plot_attention(
                     minimum, -minimum if minimum < 0 else maximum, 9, endpoint=True
                 ),
             )
-            cbar.minorticks_on()
+            cbar.set_ticks([])
             ax.set_xticks([])
             ax.set_yticks([])
 
